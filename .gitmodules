@@ -1,0 +1,6 @@
+[submodule "mooc-manus"]
+	path = mooc-manus
+	url = https://github.com/pw151294/mooc-manus.git
+[submodule "mooc-manus-web"]
+	path = mooc-manus-web
+	url = https://github.com/pw151294/mooc-manus-web.git
