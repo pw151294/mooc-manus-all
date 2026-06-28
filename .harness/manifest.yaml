@@ -2,7 +2,8 @@ harness_version: "1.0"
 repo: mooc-manus-all
 
 cognition:
-  loadOrder: []
+  loadOrder:
+    - rules/00-priority.md
   playbooksIndex: playbooks/INDEX.md
   knowledgeIndex: knowledge/README.md
   workflowsRoot: workflows/
