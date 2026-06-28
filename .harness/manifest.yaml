@@ -6,6 +6,7 @@ cognition:
     - rules/00-priority.md
     - rules/10-submodule-discipline.md
     - rules/20-cross-repo-contracts.md
+    - rules/30-deployment-safety.md
   playbooksIndex: playbooks/INDEX.md
   knowledgeIndex: knowledge/README.md
   workflowsRoot: workflows/
