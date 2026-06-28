@@ -32,7 +32,7 @@ related_rules:
 - Domain 层直接 import 厂商 SDK → 违反 DDD 分层（基础设施细节渗入领域层），且单测 mock 困难。
 - 现有 `BaseAgent` 子类（plan / react / a2a / skill 四种 agent）已大量耦合 OpenAI 类型，越拖越难替换。
 
-相关引用：spec `2026-06-28-llm-protocol-abstraction-design.md`、规则 `R-42-llm`、落地 commit `e839163`（LLM 协议抽象重构）、`f9c1823`（子模块指针升级）。
+相关引用：spec `2026-06-28-llm-protocol-abstraction-design.md`、规则 `R-42-llm`、根仓锚点 commit `f9c1823`（`chore: 升级 mooc-manus 子模块指针至 LLM 协议抽象重构`，包含 12 个相关子模块 commit）。
 
 ## 决策
 
@@ -61,7 +61,7 @@ related_rules:
 - 技术债：多了一层值对象转换，每次 LLM 调用都要做 `Message ↔ SDK` 双向 marshal，热路径需关注分配。
 - 维护成本：新增 LLM 厂商需要新写 adapter 并保持 `Message` 字段覆盖度，文档（R-42）与 deny-list 需同步更新。
 - 学习曲线：新成员需先理解 `llm.Message` / `Invoker` 的语义边界，再写 adapter，比直接调 SDK 上手慢。
-- 兼容性影响：旧 `*llm.OpenAiLLM` 调用点全部需要改造（已在 commit `e839163` 一次性完成）。
+- 兼容性影响：旧 `*llm.OpenAiLLM` 调用点全部需要改造（已在子模块 commit `mooc-manus@5523244` 等一次性完成，详见"实施 / 跟进"段）。
 
 ### 中性 / 待观察
 
@@ -82,8 +82,15 @@ related_rules:
 
 - 关联 plan：`mooc-manus/docs/superpowers/plans/2026-06-28-llm-protocol-abstraction.md`
 - 关联 spec：`mooc-manus/docs/superpowers/specs/2026-06-28-llm-protocol-abstraction-design.md`
-- 关键 commit：`e839163`（LLM 协议抽象重构）、`b65f8e3`（ModelConfig 新增 Provider）、`b5a16a0`（上层智能体切换至 Invoker 注入）、`467ef06`（清理 file 包遗留 openai 引用）。
-- 静态约束：`R-42-llm`（`mooc-manus/.harness/rules/42-llm-protocol.md`）通过 grep deny-list + ddd-layer-checker 子代理强制执行。
+- 根仓锚点：`f9c1823`（`chore: 升级 mooc-manus 子模块指针至 LLM 协议抽象重构`，包含 12 个相关子模块 commit）
+- 子模块关键 commit 链（位于 mooc-manus）：
+  - `mooc-manus@7190eb7` - LLM 协议抽象设计 spec
+  - `mooc-manus@216ea38` - feat(llm) 统一消息体抽象（Message / Tool 值对象诞生）
+  - `mooc-manus@739be68` - feat(invoker) Invoker 接口诞生
+  - `mooc-manus@236dc1d` - ChatMemory 切换为 llm.Message
+  - `mooc-manus@5523244` - BaseAgent 切换为 invoker.Invoker
+  - `mooc-manus@b65f8e3`、`mooc-manus@b5a16a0`、`mooc-manus@467ef06` - 后续完善与场景适配（ModelConfig 新增 Provider / 上层智能体切换至 Invoker 注入 / 清理 file 包遗留 openai 引用）
+- 静态约束：`R-42-llm`（`mooc-manus/.harness/rules/42-llm-protocol.md`）已落地为静态约束（deny-list + adapter 例外段），通过 grep deny-list + ddd-layer-checker 子代理强制执行。
 - 后续 review 时点：Anthropic adapter 实际 SDK 实现落地时，回看 `Message.Extra` 字段是否需要升格。
 - 失效条件：若引入的第二个 adapter 表明 `Message` 字段集不足以承载（如必须暴露 SDK 原生类型），需要新 ADR supersede 本 ADR。
 
