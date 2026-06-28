@@ -5,6 +5,7 @@ cognition:
   loadOrder:
     - rules/00-priority.md
     - rules/10-submodule-discipline.md
+    - rules/20-cross-repo-contracts.md
   playbooksIndex: playbooks/INDEX.md
   knowledgeIndex: knowledge/README.md
   workflowsRoot: workflows/
