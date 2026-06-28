@@ -8,6 +8,7 @@ cognition:
     - rules/20-cross-repo-contracts.md
     - rules/30-deployment-safety.md
     - rules/31-untrusted-content.md
+    - rules/32-secrets-handling.md
   playbooksIndex: playbooks/INDEX.md
   knowledgeIndex: knowledge/README.md
   workflowsRoot: workflows/
