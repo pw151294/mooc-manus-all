@@ -60,7 +60,7 @@ for d in rules knowledge playbooks workflows retro/decisions agents hooks script
 done
 ```
 
-Expected: `tree -L 2 .harness` 显示 10 个子目录。
+Expected: `tree -L 2 .harness` 显示 11 个子目录（rules/knowledge/playbooks/workflows/specs/plans/retro/agents/hooks/scripts/archive）。
 
 - [ ] **Step 2: 写总仓 manifest.yaml 初版**
 
@@ -198,7 +198,7 @@ git status                      # 确认无误
 git commit -m "feat(harness): 总仓 .harness 骨架与 manifest 初版"
 ```
 
-Expected: commit 成功；`find` 应列出至少 13 个文件（10 个 .gitkeep + manifest.yaml + README.md + 2 个 INDEX.md）。
+Expected: commit 成功；`find` 应列出至少 14 个文件（11 个 .gitkeep + manifest.yaml + README.md + 2 个 INDEX.md = 15；以 14 作下限留余地）。
 
 ### Task 1.2: 后端 .harness 骨架（增量重组）
 
@@ -232,7 +232,7 @@ done
 harness_version: "1.0"
 repo: mooc-manus
 inherits:
-  - path: ../mooc-manus-all/.harness
+  - path: ../../.harness          # 从 mooc-manus/.harness/ 出发，../.. 是 mooc-manus-all/，再进 .harness/
     version: "1.0"
 
 cognition:
@@ -381,7 +381,7 @@ done
 harness_version: "1.0"
 repo: mooc-manus-web
 inherits:
-  - path: ../mooc-manus-all/.harness
+  - path: ../../.harness          # 从 mooc-manus-web/.harness/ 出发，../.. 是 mooc-manus-all/，再进 .harness/
     version: "1.0"
 
 cognition:
@@ -558,13 +558,21 @@ severity: critical
 
 - [ ] **Step 2: 加入 manifest::loadOrder 并 commit**
 
-修改 `.harness/manifest.yaml` 的 `cognition.loadOrder`：
+修改 `.harness/manifest.yaml` 的 `cognition.loadOrder`（推荐用 `yq -i` 避免多人并行时合并冲突）：
+
+```bash
+yq -i '.cognition.loadOrder += ["rules/00-priority.md"]' .harness/manifest.yaml
+```
+
+效果等价于：
 
 ```yaml
 cognition:
   loadOrder:
     - rules/00-priority.md
 ```
+
+后续每写完一份 rules，使用相同模式追加（替换文件名即可）。
 
 ```bash
 git add .harness/rules/00-priority.md .harness/manifest.yaml
@@ -1159,9 +1167,11 @@ mkdir -p .harness/workflows/{1-brainstorm,2-spec,3-plan,4-implement,5-review,6-r
 
 ---
 
-## Phase 8: specs / plans / retro 索引与迁移（可并行，约 0.5 工日）
+## Phase 8: specs / plans / retro 索引与迁移（依赖 Phase 3.11，约 0.5 工日）
 
 目标：建立索引层（已在 Phase 1 写了初版），把后端 ai-error-log 迁到总仓 retro/。
+
+> ⚠️ 依赖：Task 8.1 必须在 **Phase 3 Task 3.11**（把后端 ai-error-log 移到 archive/）完成后才能执行。如果两 Phase 并行启动，Phase 8 这步会读不到源文件。
 
 ### Task 8.1: 总仓 retro/ai-error-log.md 迁移
 
@@ -1628,7 +1638,8 @@ exit 0   # 永远不阻塞
 # 检查 conventional commits 格式（warning）
 msg_file="$1"
 first_line=$(head -1 "$msg_file")
-if ! [[ "$first_line" =~ ^(feat|fix|chore|docs|test|refactor|style|perf|build|ci)(\([a-z0-9-]+\))?:\ .+ ]]; then
+# scope 允许字母数字、下划线、连字符、空格、& 与 .（兼容历史 commit "chore: 升级子模块指针(mooc-manus & mooc-manus-web)"）
+if ! [[ "$first_line" =~ ^(feat|fix|chore|docs|test|refactor|style|perf|build|ci)(\([A-Za-z0-9_.\&\ -]+\))?:\ .+ ]]; then
   echo "[harness] ⚠️ commit message 不符合 conventional commits 格式"
   echo "[harness]   建议格式：feat(scope): 描述 / chore: 升级子模块指针(name)"
 fi
@@ -1650,11 +1661,17 @@ while read local_ref local_sha remote_ref remote_sha; do
 done
 
 # 2. 子模块指针变动 commit message 是否含"升级"
-if git log "@{push}..HEAD" --pretty=format:"%H %s" 2>/dev/null | while read sha subject; do
-    git show --pretty="" --name-only "$sha" | grep -q "^mooc-manus" && \
-      ! echo "$subject" | grep -qE "(升级|upgrade|bump)" && \
+# 用 @{upstream} 等价于 @{push}，且若 upstream 缺失静默跳过
+range="@{upstream}..HEAD"
+if git rev-parse "$range" >/dev/null 2>&1; then
+  git log "$range" --pretty=format:"%H %s" | while read sha subject; do
+    [ -z "$sha" ] && continue
+    if git show --pretty="" --name-only "$sha" | grep -q "^mooc-manus" && \
+       ! echo "$subject" | grep -qE "(升级|upgrade|bump)"; then
       echo "[harness] ⚠️ commit $sha 修改子模块指针但 message 未含'升级' (R-10)"
-done; then :; fi
+    fi
+  done
+fi
 
 exit 0
 ```
@@ -1765,9 +1782,8 @@ git commit -m "chore: 升级子模块指针(scripts/hooks 同步)"
 spec/plan 落在 `docs/superpowers/`，`.harness/specs|plans/` 仅做索引层。
 
 ## 当前进行中的 plan
-<!-- HARNESS-PLANS-START -->
-（由 sync-bridges 自动填入：从 .harness/plans/INDEX.md 提取 in-progress）
-<!-- HARNESS-PLANS-END -->
+（手写维护至 v1.0；v1.1 后由 sync-bridges 自动从 `.harness/plans/INDEX.md` 提取 in-progress 段）
+- [2026-06-28 Harness 文档体系建设](./docs/superpowers/plans/2026-06-28-harness-doc-build.md)
 ```
 
 ### Task 11.2: 总仓 AGENTS.md（从零）
@@ -1818,10 +1834,23 @@ git commit -m "feat(harness): 后端桥接层烘焙"
 
 ```bash
 cd mooc-manus-web
-# 拷贝总仓模板再调整
+# 用总仓模板作为基准（注意：复制后必须清空已被烘焙的 GENERATED 段，避免把总仓内容当作前端内容）
 cp ../CLAUDE.md ./CLAUDE.md
 cp ../AGENTS.md ./AGENTS.md
+
+# 清空 GENERATED 段，让 sync-bridges 重新基于前端 manifest 烘焙
+for f in CLAUDE.md AGENTS.md; do
+  awk '
+    BEGIN { in_gen=0 }
+    /<!-- HARNESS-GENERATED-START -->/ { print; in_gen=1; next }
+    /<!-- HARNESS-GENERATED-END -->/   { in_gen=0; print; next }
+    !in_gen { print }
+  ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+done
+
 # 编辑顶部"工作环境"说明改为"前端：React + TS + SSE 客户端"
+# （手动编辑或用 sed 替换；详见 README）
+
 .harness/scripts/bootstrap.sh
 git add CLAUDE.md AGENTS.md .cursorrules
 git commit -m "feat(harness): 前端桥接层从零创建并烘焙"
@@ -1900,22 +1929,49 @@ commit：`ci: harness checks workflow`。
 ```bash
 #!/usr/bin/env bash
 # 把总仓 .harness/scripts 与 hooks 同步到两子仓（保证三仓内容一致）
+# 用法：
+#   ./sync-scripts-to-submodules.sh           # 默认：直接同步（写）
+#   ./sync-scripts-to-submodules.sh --check   # CI 模式：仅检查 diff，不写
 set -euo pipefail
 
+MODE="write"
+case "${1:-}" in
+  --check) MODE="check" ;;
+  "") ;;
+  *) echo "unknown arg: $1"; exit 2 ;;
+esac
+
+diff_count=0
 for sub in mooc-manus mooc-manus-web; do
-  rsync -a --delete --exclude validate-contracts.sh .harness/scripts/ "$sub/.harness/scripts/"
-  rsync -a --delete .harness/hooks/ "$sub/.harness/hooks/"
-  echo "✅ Synced to $sub"
+  if [ "$MODE" = "check" ]; then
+    if ! diff -rq --exclude=validate-contracts.sh .harness/scripts/ "$sub/.harness/scripts/" >/dev/null; then
+      echo "❌ scripts/ 在 $sub 不同步"; diff_count=$((diff_count+1))
+    fi
+    if ! diff -rq .harness/hooks/ "$sub/.harness/hooks/" >/dev/null; then
+      echo "❌ hooks/ 在 $sub 不同步"; diff_count=$((diff_count+1))
+    fi
+  else
+    rsync -a --delete --exclude validate-contracts.sh .harness/scripts/ "$sub/.harness/scripts/"
+    rsync -a --delete .harness/hooks/ "$sub/.harness/hooks/"
+    echo "✅ Synced to $sub"
+  fi
 done
 
-# 提示用户分别进入子仓 commit
-echo ""
-echo "Next: cd mooc-manus && git status; cd mooc-manus-web && git status"
+if [ "$MODE" = "check" ]; then
+  if [ $diff_count -ne 0 ]; then
+    echo "❌ 有 $diff_count 处不同步，请在总仓跑 sync-scripts-to-submodules.sh 后重新提交"
+    exit 1
+  fi
+  echo "✅ 三仓 scripts/hooks 一致"
+else
+  echo ""
+  echo "Next: cd mooc-manus && git status; cd mooc-manus-web && git status"
+fi
 ```
 
-CI 中跑 `--check` 模式（diff > 0 则失败）。
+CI 中调用：`./.harness/scripts/sync-scripts-to-submodules.sh --check`。
 
-commit：`feat(harness): scripts/sync-scripts-to-submodules.sh`
+commit：`feat(harness): scripts/sync-scripts-to-submodules.sh（含 --check 模式）`
 
 > ✅ Phase 12 完成检查：CI 在 PR 上自动跑 validate + contracts + sync 一致性。
 

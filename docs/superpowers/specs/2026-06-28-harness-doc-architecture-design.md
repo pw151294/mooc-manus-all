@@ -143,8 +143,8 @@ GEMINI.md
 ```yaml
 harness_version: "1.0"
 repo: mooc-manus-all                # 或 mooc-manus / mooc-manus-web
-inherits:                            # 仅子仓使用
-  - path: ../mooc-manus-all/.harness
+inherits:                            # 仅子仓使用；路径相对 .harness/ 目录解析
+  - path: ../../.harness             # 子仓嵌套在 mooc-manus-all/ 内（git submodule）；从 mooc-manus/.harness/ 出发，../.. 抵达 mooc-manus-all/，再进 .harness/
     version: "1.0"
 
 cognition:
@@ -224,7 +224,7 @@ mooc-manus-all/.harness/rules/
 ---
 rule_id: R-NN-name
 severity: critical | high | medium | low
-overrides: ../mooc-manus-all/.harness/rules/30-deployment-safety.md   # 可选，声明覆盖父仓同号文件
+overrides: ../../.harness/rules/30-deployment-safety.md   # 可选，声明覆盖父仓同号文件（路径相对当前 rule 文件）
 applies_when:                                                          # 可选，缩窄触发场景
   - changed_paths: ["internal/domains/**"]
 ---
@@ -267,7 +267,7 @@ mooc-manus-web/.harness/rules/
 
 - 子仓 manifest.yaml::inherits 声明父仓路径
 - Agent 启动时：先加载父仓 rules（按父仓 loadOrder），再加载本仓 rules
-- **同名规则文件：本仓覆盖父仓**（子仓文件头部需声明 `overrides: ../mooc-manus-all/.harness/rules/40-xxx.md`）
+- **同名规则文件：本仓覆盖父仓**（子仓文件头部需声明 `overrides: ../../.harness/rules/40-xxx.md`）
 - **不同名：合并**
 - `validate-harness.sh` 扫描同名文件 → 警告"R-XX 被子仓覆盖"
 
