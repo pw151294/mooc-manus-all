@@ -9,6 +9,8 @@
 #         （仅取以 EventType 开头的常量字符串值）
 #   前端：mooc-manus-web/src/types/sse.ts
 #         （仅取 SSEEventType 联合类型的字符串字面量）
+#
+# 前端 union 解析：支持多行 / 单行多字面量；不支持反引号 / 模板字符串
 set -uo pipefail
 
 BACK_FILE="${BACK_FILE:-mooc-manus/internal/domains/models/events/constants.go}"
@@ -34,11 +36,14 @@ back_events=$(awk '
 
 # 2. 提取前端事件值：SSEEventType 联合类型的 | 'foo' 行
 #    捕获从 `export type SSEEventType =` 起到分号止（含分号所在行）的所有字符串字面量
+#    支持单行多字面量
 front_events=$(awk "
   /export type SSEEventType[[:space:]]*=/ {capture=1; next}
   capture {
-    if (match(\$0, /'[^']+'/)) {
-      print substr(\$0, RSTART+1, RLENGTH-2)
+    line = \$0
+    while (match(line, /'[^']+'/)) {
+      print substr(line, RSTART+1, RLENGTH-2)
+      line = substr(line, RSTART + RLENGTH)
     }
     if (/;/) capture=0
   }
@@ -78,11 +83,11 @@ done <<< "$back_events"
 
 if [ -n "$missing" ]; then
   echo "⚠️  前端订阅但后端未定义的事件（违规）:"
-  printf "$missing" | sed 's/^/    - /'
+  printf '%b' "$missing" | sed 's/^/    - /'
 fi
 if [ -n "$only_back" ]; then
   echo "ℹ️  后端定义但前端未订阅的事件（仅参考）:"
-  printf "$only_back" | sed 's/^/    - /'
+  printf '%b' "$only_back" | sed 's/^/    - /'
 fi
 
 if [ -z "$missing" ]; then
