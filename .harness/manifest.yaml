@@ -4,6 +4,7 @@ repo: mooc-manus-all
 cognition:
   loadOrder:
     - rules/00-priority.md
+    - rules/10-submodule-discipline.md
   playbooksIndex: playbooks/INDEX.md
   knowledgeIndex: knowledge/README.md
   workflowsRoot: workflows/
