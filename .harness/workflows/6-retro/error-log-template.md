@@ -26,6 +26,7 @@
 - **根因**至少深挖一层，不止步于表象（例："agent 没读 R-20" → 进一步问"R-20 是否描述不清"或"agent 是否没收到 rules"）
 - **教训**要能落地为后续动作（rule / hook / playbook / spec），不是"以后注意"这种无效结论
 - 包含 commit hash 便于追溯；如未 commit（被发现并阻拦在前）则写 "未 commit，阻拦于 <环节>"
+- rule 引用使用 frontmatter 中的 rule_id（如 `R-10-submodule`、`R-32-secrets`），不要用文件名
 
 ## 示例骨架
 
@@ -33,7 +34,7 @@
 ## 2026-06-28 23:45 — 子模块指针漏 commit
 
 - **触发 commit**：a1b2c3d
-- **违反 rule**：R-10 submodule-discipline §3
+- **违反 rule**：R-10-submodule §3
 - **现象**：CI 报"submodule pointer mismatch"，origin/master 上 mooc-manus 指针仍指向旧 commit
 - **根因**：subagent 在子仓内 commit 后未回到总仓 `git add <submodule-path>` + 升级指针。R-10 §3 描述偏抽象，未给出操作步骤
 - **修复**：手动补 commit b2c3d4e；并在 R-10 §3 加入具体命令示例

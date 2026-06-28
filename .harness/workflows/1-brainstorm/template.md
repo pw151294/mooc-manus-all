@@ -50,4 +50,4 @@
 
 - [ ] 转写 spec：`docs/superpowers/specs/<date>-<topic>-design.md`
 - [ ] 或直接进 plan：`docs/superpowers/plans/<date>-<topic>.md`
-- [ ] 是否需要 ADR：是 / 否（若是，落在 `.harness/retro/adr/`）
+- [ ] 是否需要 ADR：是 / 否（若是，落在 `.harness/retro/decisions/`）

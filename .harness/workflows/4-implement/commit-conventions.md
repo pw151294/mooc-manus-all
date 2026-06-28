@@ -12,6 +12,10 @@
 - `test`：仅测试改动
 - `style`：格式（不影响语义）
 - `perf`：性能优化
+- `build`：构建脚本 / 依赖变更（go.mod、package.json、Makefile 等）
+- `ci`：CI 配置变更（.github/workflows、hooks 等）
+
+> 与 `.harness/hooks/commit-msg` 校验保持一致，共 10 种 type。
 
 ## scope 允许字符
 

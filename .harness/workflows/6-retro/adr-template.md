@@ -10,7 +10,7 @@ superseded_by: <可选，本 ADR 被哪个 ADR 取代后填>
 
 # ADR-NNN: <标题>
 
-> ADR（Architecture Decision Record）记录"为什么做出某个架构决定"。落地路径：`.harness/retro/adr/<NNN>-<slug>.md`。
+> ADR（Architecture Decision Record）记录"为什么做出某个架构决定"。落地路径：`.harness/retro/decisions/<NNN>-<slug>.md`。
 
 ## 背景
 

@@ -44,7 +44,7 @@ go test -race ./...   # 关键并发模块必跑
 
 项目当前 **没有 unit test framework**。在加测试前应该：
 
-1. 起一个 ADR：`.harness/retro/adr/<date>-frontend-test-framework.md`
+1. 起一个 ADR：`.harness/retro/decisions/<date>-frontend-test-framework.md`
 2. 选型建议：vitest + @testing-library/react（与 Vite 栈兼容）
 3. ADR approved 后再补测试基础设施
 
@@ -52,7 +52,7 @@ go test -race ./...   # 关键并发模块必跑
 
 - 新增 UI 组件：在 PR 描述写明"手测步骤"（哪个页面、点哪个按钮、看到什么）
 - 服务层 / hooks：以 TypeScript 类型约束 + 手测覆盖
-- 不允许在没有任何验证的情况下交付（违反 R-40 verification-before-completion）
+- 不允许在没有任何验证的情况下交付（违反本仓测试 DoD 要求）
 
 ### ADR 通过后
 
