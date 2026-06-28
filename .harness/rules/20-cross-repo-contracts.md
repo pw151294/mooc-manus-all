@@ -22,7 +22,7 @@ severity: high
 
 ## DTO 结构约束
 
-后端 `mooc-manus/internal/interfaces/dtos/` 定义的 DTO，与前端 `mooc-manus-web/src/types/` 对应 TS 类型必须：
+后端 `mooc-manus/internal/applications/dtos/` 定义的 DTO，与前端 `mooc-manus-web/src/types/` 对应 TS 类型必须：
 - 字段名一致（camelCase）
 - 可空性一致（Go `*Type` → TS `Type | null`）
 - 枚举值一致
