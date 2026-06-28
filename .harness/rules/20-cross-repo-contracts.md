@@ -5,10 +5,15 @@ severity: high
 
 # 前后端契约
 
-## SSE 事件契约（11 种）
+## SSE 事件契约（16 种，权威定义见 `mooc-manus/internal/domains/models/events/constants.go`）
 
-前端 `mooc-manus-web/src/api/sse.ts` 订阅的事件类型：
-- `message` / `plan` / `step` / `tool` / `error` / `done` / `thinking` / `metadata` / `status` / `citation` / `file`
+前端 `mooc-manus-web/src/api/sse.ts` 订阅的事件类型，分四组：
+
+- **通用消息**：`title` / `message` / `message_end`
+- **工具调用**：`tool_call_start` / `tool_call_complete` / `tool_call_fail`
+- **Plan 流转**：`plan_create_success` / `plan_update_success` / `plan_update_failed` / `plan_completed`
+- **Step 流转**：`step_start` / `step_complete` / `step_fail`
+- **系统控制**：`wait` / `error` / `done`
 
 **约束**：
 1. 后端新增事件类型 → 必须同步更新前端 `EventType` 类型定义
@@ -38,3 +43,5 @@ severity: high
 CI 跑 `.harness/scripts/validate-contracts.sh`：
 - 前端 EventType 枚举 ⊆ 后端事件定义
 - DTO JSON schema 前后端一致性检查
+
+详细 payload 必填字段见 `mooc-manus/.harness/rules/45-event-emission.md`（R-45）
