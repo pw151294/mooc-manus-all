@@ -1,0 +1,58 @@
+name: Harness Checks
+
+on:
+  pull_request:
+  push:
+    branches: [master, main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install yq
+        run: |
+          sudo wget -q https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Validate total harness
+        run: ./.harness/scripts/validate-harness.sh
+
+      - name: Validate backend harness
+        run: HARNESS_ROOT=mooc-manus/.harness ./mooc-manus/.harness/scripts/validate-harness.sh
+
+      - name: Validate frontend harness
+        run: HARNESS_ROOT=mooc-manus-web/.harness ./mooc-manus-web/.harness/scripts/validate-harness.sh
+
+      - name: Validate contracts
+        run: ./.harness/scripts/validate-contracts.sh
+
+      - name: Check scripts/hooks synced across three repos
+        run: ./.harness/scripts/sync-scripts-to-submodules.sh --check
+
+      - name: Check total-repo bridges synced
+        run: |
+          ./.harness/scripts/sync-bridges.sh
+          ./.harness/scripts/generate-cursorrules.sh
+          git diff --ignore-matching-lines="^# Last updated:" --exit-code CLAUDE.md AGENTS.md .cursorrules || \
+            (echo "总仓桥接层未同步，请在本地跑 sync-bridges.sh 与 generate-cursorrules.sh 后提交"; exit 1)
+
+      - name: Check backend bridges synced
+        run: |
+          cd mooc-manus
+          HARNESS_ROOT=.harness ./.harness/scripts/sync-bridges.sh
+          HARNESS_ROOT=.harness ./.harness/scripts/generate-cursorrules.sh
+          git diff --ignore-matching-lines="^# Last updated:" --exit-code CLAUDE.md AGENTS.md .cursorrules || \
+            (echo "后端桥接层未同步，请在 mooc-manus/ 下跑 sync-bridges.sh 与 generate-cursorrules.sh 后提交"; exit 1)
+
+      - name: Check frontend bridges synced
+        run: |
+          cd mooc-manus-web
+          HARNESS_ROOT=.harness ./.harness/scripts/sync-bridges.sh
+          HARNESS_ROOT=.harness ./.harness/scripts/generate-cursorrules.sh
+          git diff --ignore-matching-lines="^# Last updated:" --exit-code CLAUDE.md AGENTS.md .cursorrules || \
+            (echo "前端桥接层未同步，请在 mooc-manus-web/ 下跑 sync-bridges.sh 与 generate-cursorrules.sh 后提交"; exit 1)
