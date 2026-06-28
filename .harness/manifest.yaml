@@ -1,0 +1,35 @@
+harness_version: "1.0"
+repo: mooc-manus-all
+
+cognition:
+  loadOrder: []
+  playbooksIndex: playbooks/INDEX.md
+  knowledgeIndex: knowledge/README.md
+  workflowsRoot: workflows/
+
+bridges:
+  - file: ../CLAUDE.md
+    tool: claude-code
+  - file: ../AGENTS.md
+    tool: agents-md-standard
+  - file: ../.cursorrules
+    tool: cursor-legacy
+    generated: true
+
+execution:
+  agents:
+    index: agents/README.md
+    items: []
+  hooks:
+    installer: scripts/bootstrap.sh
+    enabled:
+      - pre-commit
+      - commit-msg
+      - pre-push
+      - post-checkout
+    strictness: warning
+  scripts:
+    validator: scripts/validate-harness.sh
+    cursorrulesGenerator: scripts/generate-cursorrules.sh
+    bridgesSync: scripts/sync-bridges.sh
+    contractsValidator: scripts/validate-contracts.sh
