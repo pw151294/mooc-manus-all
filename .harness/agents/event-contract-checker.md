@@ -20,6 +20,12 @@ outputs:
 
 引用 rule：**R-20-contracts**（`/Users/panwei/Downloads/python/mcp+A2A/mooc-manus-all/.harness/rules/20-cross-repo-contracts.md`），权威事件列表见 `mooc-manus/internal/domains/models/events/constants.go`。
 
+协同 rule：
+- 前端 `R-41-sse`（`mooc-manus-web/.harness/rules/41-sse-event-handling.md`）：事件订阅与重连
+- 后端 `R-45-event`（`mooc-manus/.harness/rules/45-event-emission.md`）：事件发布契约
+
+R-20-contracts 是跨仓契约总则；前端不一致 → 指向 R-41，后端不一致 → 指向 R-45。
+
 1. **R-20 16 种事件是否齐全？** —— 前端 `EventType` 联合类型必须覆盖（且不超出）后端 constants.go 中导出的事件名：`title` / `message` / `message_end` / `tool_call_start` / `tool_call_complete` / `tool_call_fail` / `plan_create_success` / `plan_update_success` / `plan_update_failed` / `plan_completed` / `step_start` / `step_complete` / `step_fail` / `wait` / `error` / `done`。
 2. **事件名同步？** —— 后端新增/重命名事件名时，前端 `src/types/sse.ts` 是否同步更新；前端 `src/api/sse.ts` 的 switch/handler 分支是否覆盖。
 3. **DTO 字段对齐？** —— 后端 `internal/applications/dtos/*.go` 与前端 `src/types/*.ts` 同名结构，字段名（camelCase）、可空性（Go `*T` ↔ TS `T | null`）、枚举值是否一致。
