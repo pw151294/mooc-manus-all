@@ -2,6 +2,15 @@
 
 智能体编排平台 - 前后端统一管理仓库
 
+## AI Agent / Harness
+
+本项目使用 SDD + Harness 三层文档体系。
+
+- **Agent 入口**：`.harness/README.md` → 按 manifest.yaml::loadOrder 加载 rules
+- **设计文档**：`docs/superpowers/specs/2026-06-28-harness-doc-architecture-design.md`
+- **实施计划**：`docs/superpowers/plans/2026-06-28-harness-doc-build.md`
+- **新成员**：从 `.harness/knowledge/architecture-overview.md` 开始
+
 ## 仓库结构
 
 - `mooc-manus/` - 后端服务 (Go)

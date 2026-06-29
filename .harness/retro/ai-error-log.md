@@ -190,3 +190,11 @@ baseAgentDomainSvc := agents.NewBaseAgentDomainService(..., skillRepo, skillVers
 **文档版本：** v1.0  
 **最后更新：** 2026-06-25  
 **维护原则：** 只增不删，持续积累
+
+---
+
+## Harness v1.0 上线（2026-06-28）
+
+本分隔线以下为 Harness v1.0 上线后记录的 AI 违规与错误。
+
+（暂无新记录）

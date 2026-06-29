@@ -2,7 +2,7 @@
 title: mooc-manus-all SDD + Harness 三层文档体系
 date: 2026-06-28
 author: harness engineering team
-status: in-review
+status: approved
 ---
 
 # 设计文档：mooc-manus-all SDD + Harness 三层文档体系
