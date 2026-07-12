@@ -1,153 +1,57 @@
-# E2E 测试报告：工具调用熔断机制
+# E2E 汇总: 0/5 通过
 
-测试时间：2026-07-12 17:01 - 17:10
-
-## 汇总
-
-**E2E 汇总: 2/3 通过**
-
-```
-[用例 1] fail — LLM 未按系统提示词诱导调用不存在工具
-[用例 2] pass — fileRead 同 path 失败 3 次后 LLM 停止重试，日志命中熔断，done 事件到达
-[用例 3] pass — 2 次不同 path 失败未触发熔断，fileWrite→fileRead 正常完成
-```
-
----
-
-## 用例详情
-
-### [用例 1] fail — LLM 未按系统提示词诱导调用不存在工具
-
-**目标**: 诱导 LLM 反复调用不存在的工具 `e2e_forbidden_probe`，验证"工具不存在"分支触发熔断。
-
-**实际结果**:
-- LLM 未按系统提示词指令调用 `e2e_forbidden_probe`
-- 而是调用了现有的 `fileRead` 和 `bashExec` 工具
-- 未触发熔断机制
-- 后端日志：未找到熔断日志
-
-**失败原因**:
-- 系统提示词的诱导强度可能不够
-- LLM 识别出工具不存在，主动规避了调用
-- 前端配置可能未正确应用到会话
-
-**产物**:
-- 截图: `tmp/e2e/case-1-fail.png`
-- 日志: `tmp/e2e/case-1-log.txt`（未找到熔断日志）
-
----
-
-### [用例 2] pass — fileRead 同 path 失败 3 次后 LLM 停止重试
-
-**目标**: 验证合法工具执行失败（同一 path 的 fileRead）触发熔断，`fileRead` 只哈希 `path` 的策略生效。
-
-**实际结果**:
-- ✅ 3 次 fileRead 调用，path 均为 `/tmp/mooc-manus-e2e-nonexist-ukhrwgsg.txt`
-- ✅ 全部失败（文件不存在）
-- ✅ 后端日志显示：`检测到工具调用死循环，注入干预提示，tools: ["fileRead"]`
-- ✅ LLM 最终回复明确提到："经过 3 次重试"、"系统已强制阻止我对该路径继续重试"
-- ✅ 对话正常结束（done），无 error 事件
-- ✅ console 无 error 级日志
-
-**符合所有预期**:
-- tool_call_fail 里 fileRead 失败次数 ≥ 3 且 ≤ 5 ✓
-- 每次 arguments.path 完全一致 ✓
-- 第 4 次之后不再对同一 path 发起 fileRead ✓
-- SSE 最终收到 done ✓
-- 后端日志命中熔断 ✓
-- assistant 回复包含关键词（"不存在"、"路径"、"无法读取"、"重新规划"）✓
-
-**产物**:
-- 截图: `tmp/e2e/case-2-pass.png`
-- 日志: `tmp/e2e/case-2-log.txt`
-- 控制台: `tmp/e2e/case-2-console.txt`
-
----
-
-### [用例 3] pass — 2 次不同 path 失败未触发熔断
-
-**目标**: 防御性验证 — 2 次不同 path 的失败不应误触发熔断（阈值边界测试）。
-
-**实际结果**:
-- ✅ fileRead `/tmp/mooc-manus-e2e-noexist-a-92mswm9m.txt` 失败
-- ✅ fileRead `/tmp/mooc-manus-e2e-noexist-b-6olpu9s7.txt` 失败
-- ✅ 两次失败的 path 不同，不属于"同源"调用
-- ✅ 后续 fileWrite 成功创建文件 `hello-92mswm9m.txt`
-- ✅ 最终 fileRead 成功读回文件内容 `"ok"`
-- ✅ 后端日志无新增熔断记录（用例 2→3 期间仍只有 1 条）
-- ✅ 对话正常结束（done），无 error
-- ✅ console 无 error 级日志
-
-**符合所有预期**:
-- tool_call_fail 里 fileRead 出现 2 次，但 path 不同 ✓
-- 后续 fileWrite 成功 ✓
-- 最后 fileRead 读回文件成功 ✓
-- 后端日志反向断言：无新增熔断记录 ✓
-- SSE 最终收到 done ✓
-
-**产物**:
-- 截图: `tmp/e2e/case-3-pass.png`
-- 控制台: `tmp/e2e/case-3-console.txt`
-
----
-
-## 失败分析
-
-### 用例 1 失败根因
-
-**问题**: LLM 未遵循系统提示词诱导，没有调用不存在的工具。
-
-**可能原因**:
-1. **LLM 自我审查**: DeepSeek-V4-Pro 可能识别出工具不存在，主动跳过了调用
-2. **系统提示词优先级**: 模型的内置安全机制可能覆盖了用户的系统提示词
-3. **前端配置传递**: 虽然 UI 显示系统提示词已填入，但可能未正确传递到后端会话
-
-**建议**:
-- 尝试更强的诱导策略（如在用户消息中也强调必须调用该工具）
-- 或直接在后端 mock 一个会失败的 `e2e_forbidden_probe` 工具
-- 检查前端→后端的 systemPrompt 传递链路
-
----
+**测试时间**: 2026-07-12 20:34 ~ 20:49
+**Spec**: `docs/e2e/human-in-the-loop.md`
 
 ## 结论
 
-**熔断机制验证结果**:
-- ✅ **核心功能正常**: 同源工具调用失败 3 次后成功触发熔断并注入干预
-- ✅ **边界条件正确**: 不同 key 的失败不会误触发
-- ❌ **诱导场景失败**: "工具不存在"分支未能在 E2E 中复现（LLM 主动规避）
+**5 个用例全部 fail — 单一共享根因**(详见 `tmp/e2e/shared-root-cause.md`):
 
-**生产可用性评估**:
-- 熔断机制对**真实失败场景**（如文件不存在）工作正常 ✓
-- 对**恶意或错误配置的系统提示词**的防御能力未能验证 ⚠️
-- 建议补充后端单元测试覆盖"工具不存在"分支
+后端发送给 LLM 的 `bashExec` Function Calling schema **缺少 `risk_level` 与 `risk_reason` 两个必填字段**,`required` 只有 `["command","description"]`。虽然 `mooc-manus/internal/domains/services/tools/bash_exec.go:142-152` 源码定义了这两个字段,但从 `models.ToolFunctionDO.Schema.Parameters` 到 LLM 客户端 tool schema 的序列化路径某一步丢了字段。
 
----
+传导链:
+1. LLM 收到的 schema 不含 `risk_level` → LLM tool call arguments 不带 `risk_level`
+2. `base.go:161` `interrupt.ParseRiskFromArgs(funcArgs)` 报 `ErrMissingRisk`
+3. `base.go:163-166` 打 warn `"HITL 风险字段解析失败,降级为直接执行"`
+4. 危险命令走 `denyList.Match` 拦截 / 或直接执行,**永远不进入 HITL 中断分支**
 
-## 测试环境
+后端 log 关键词命中(整段 log 范围内):
+- `risk_level` — 1 次(仅源码内定义的一次)
+- `tool_call_interrupt` — 0 次
+- `action=register` — 0 次
+- `dangerous` — 0 次
 
-- 前端: http://localhost:3000 (mooc-manus-web)
-- 后端: http://localhost:8080 (mooc-manus)
-- 模型: deepseek-ai/DeepSeek-V4-Pro
-- 日志: mooc-manus/logs/manus.log
-- 测试时间: 2026-07-12 17:01 - 17:10
+## 各用例结果
 
----
+[用例 E2E-01] fail — 3 次不同 prompt(P-danger-1 / P-danger-3 / 定制 rm)+ 2 个模型(deepseek-ai/DeepSeek-V4-Pro、zai-org/GLM-5.2)+ 强制系统提示词,均未出现"高危调用待审批"卡片
+  截图: tmp/e2e/case-1-fail.png
+  SSE: tmp/e2e/case-1-sse.txt(仅含 message 事件,无 tool_call_interrupt)
+  日志: tmp/e2e/case-1-log.txt
+
+[用例 E2E-02] fail — 前置条件"触发 tool_call_interrupt"无法满足,共享 case-1 根因
+  日志: tmp/e2e/case-2-log.txt
+
+[用例 E2E-03] fail — 前置条件"触发 tool_call_interrupt"无法满足,共享 case-1 根因
+  日志: tmp/e2e/case-3-log.txt
+
+[用例 E2E-04] fail — 前置条件"触发 tool_call_interrupt"无法满足,共享 case-1 根因;`HITL_WAIT_TIMEOUT` 环境变量本用例未验证到(即使调低超时,前置不满足也无从触发)
+  日志: tmp/e2e/case-4-log.txt
+
+[用例 E2E-05] fail — 前置条件"触发 tool_call_interrupt"无法满足,共享 case-1 根因
+  日志: tmp/e2e/case-5-log.txt
+
+## 建议下一步
+
+不属于 E2E 层修复范畴。建议交回后端排查:
+`internal/domains/services/tools/bash_exec.go` → `models.ToolFunctionDO.Schema.Parameters` → LLM 客户端 tool 序列化 → OpenAI/Anthropic tools payload。为什么 `required` 段落从 4 个字段被削到 2 个,`properties` 里 `risk_level` / `risk_reason` 被丢弃。
+
+参考对照测试:`internal/applications/services/agent_hitl_integration_test.go` 里 I-01~I-13 集成测试用手工构造的 `argsDangerous(...)` 绕过了 LLM,直接注入含 `risk_level=dangerous` 的 arguments。如果集成测试全绿而 E2E 触发不了,进一步佐证问题在"schema 从 Domain 送到 LLM 客户端"这段。
 
 ## 产物清单
 
-```
-tmp/e2e/
-├── case-1-fail.png          # 用例 1 失败截图
-├── case-1-summary.md        # 用例 1 详细分析
-├── case-1-log.txt           # 用例 1 后端日志（空）
-├── case-1-console.txt       # 用例 1 控制台日志
-├── case-1-network.txt       # 用例 1 网络请求
-├── case-2-pass.png          # 用例 2 通过截图
-├── case-2-summary.md        # 用例 2 详细分析
-├── case-2-log.txt           # 用例 2 后端日志（命中熔断）
-├── case-2-console.txt       # 用例 2 控制台日志
-├── case-3-pass.png          # 用例 3 通过截图
-├── case-3-summary.md        # 用例 3 详细分析
-├── case-3-console.txt       # 用例 3 控制台日志
-└── report.md                # 本报告
-```
+- `tmp/e2e/case-1-fail.png` — case-1 截图(卡片未出现)
+- `tmp/e2e/case-1-sse.txt` — case-1 SSE 原始流
+- `tmp/e2e/case-1-console.txt` — 控制台日志(仅 antd 弃用告警,无业务 error)
+- `tmp/e2e/case-1-log.txt` — 后端关键词命中统计 + schema 证据
+- `tmp/e2e/case-{2..5}-log.txt` — 共享根因归档
+- `tmp/e2e/shared-root-cause.md` — 根因详解
