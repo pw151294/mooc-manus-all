@@ -1,0 +1,1 @@
+2026-07-12T17:06:17.513+0800	WARN	logger/loggers.go:191	检测到工具调用死循环，注入干预提示	{"triggeredCount": 1, "tools": ["fileRead"]}
