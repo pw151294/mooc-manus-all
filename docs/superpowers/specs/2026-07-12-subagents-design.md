@@ -57,7 +57,9 @@ Tool 层（internal/domains/services/tools/）
 1. **PlanMode 启用门禁**：子智能体功能仅在 `PlanMode == true` 时启用
 2. **禁止递归调用**：子智能体的 `allowed_tools` 不得包含 `dispatchSubagent`
 3. **工具白名单机制**：子智能体只能使用主智能体工具集的子集
-4. **共享熔断器**：子智能体的工具调用失败计数累加到主智能体的熔断器
+4. **独立熔断器**：子智能体使用独立的 `CircuitBreaker`，避免干扰主智能体的熔断判定
+5. **Context 传递**：子智能体继承主智能体的 `context.Context`，支持取消和超时
+6. **总超时保护**：子智能体执行总时长限制为 3 分钟
 
 ### 2.3 层次定位与职责
 
@@ -156,8 +158,28 @@ type SubagentParams struct {
 
 ### 4.1 SubagentTool.Invoke() 执行流程
 
+**重要说明**：Tool 接口需要扩展以支持 Context 传递。
+
+```go
+// Tool 接口扩展（需修改 internal/domains/services/tools/tool.go）
+type Tool interface {
+  // 现有方法
+  Invoke(funcName, funcArgs string) models.ToolCallResult
+  
+  // 新增：支持 context 的调用方式（用于子智能体）
+  InvokeWithContext(ctx context.Context, funcName, funcArgs string) models.ToolCallResult
+}
+```
+
+SubagentTool 实现：
+
 ```go
 func (st *SubagentTool) Invoke(funcName, funcArgs string) models.ToolCallResult {
+  // 降级实现：使用 Background context
+  return st.InvokeWithContext(context.Background(), funcName, funcArgs)
+}
+
+func (st *SubagentTool) InvokeWithContext(ctx context.Context, funcName, funcArgs string) models.ToolCallResult {
   // 1. 解析参数
   var params SubagentParams
   if err := json.Unmarshal([]byte(funcArgs), &params); err != nil {
@@ -191,7 +213,7 @@ func (st *SubagentTool) Invoke(funcName, funcArgs string) models.ToolCallResult 
     MaxIterations: 10,  // 强制阈值，防止子智能体过度迭代
   }
   
-  // 7. 创建子 BaseAgent（共享 circuitBreaker 和 pendingSink）
+  // 7. 创建子 BaseAgent（共享 pendingSink，但使用独立熔断器）
   subAgent := agents.NewBaseAgent(
     subConfig, 
     st.invoker, 
@@ -201,39 +223,64 @@ func (st *SubagentTool) Invoke(funcName, funcArgs string) models.ToolCallResult 
     agents.WithPendingSink(st.pendingSink),
     agents.WithMessageId(st.messageId + "-" + subagentId),  // 组合 ID，用于容器隔离
   )
-  // 共享熔断器
-  subAgent.circuitBreaker = st.circuitBreaker
+  // 独立熔断器（子智能体的失败不应影响主智能体）
+  subAgent.circuitBreaker = circuitbreaker.NewToolCallCounter()
   
-  // 8. 构造子任务的 query（拼接 task_description + context）
+  //  8. 构造子任务的 query（拼接 task_description + context）
   query := params.TaskDescription
   if params.Context != "" {
     query = "背景信息：\n" + params.Context + "\n\n任务：\n" + params.TaskDescription
   }
   
-  // 9. 创建事件桥接器（透传子智能体事件到主智能体）
+  // 9. 创建事件桥接器（透传子智能体事件到主智能体，携带任务上下文）
   eventCh := make(chan events.AgentEvent)
-  bridge := NewSubagentEventBridge(st.parentEventCh, subagentId)
+  bridge := NewSubagentEventBridge(st.parentEventCh, subagentId, params.TaskDescription, params.Context)
   
-  // 10. 同步执行子智能体（阻塞调用）
+  // 10. 设置子智能体总超时（3 分钟）
+  subCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+  defer cancel()
+  
+  // 11. 异步执行子智能体
   var finalOutput string
   var toolCallsSummary []string
+  var execError error
   
-  go subAgent.Invoke(context.Background(), query, eventCh)
+  go subAgent.Invoke(subCtx, query, eventCh)
   
-  for event := range eventCh {
-    bridge.forwardEvent(event)  // 透传到主智能体事件流
+  // 12. 监听事件并处理取消信号
+  for {
+    select {
+    case event, ok := <-eventCh:
+      if !ok {
+        // eventCh 已关闭，子智能体执行完毕
+        goto buildResult
+      }
+      bridge.forwardEvent(event)  // 透传到主智能体事件流
+      
+      switch event.EventType() {
+      case events.EventTypeMessage:
+        finalOutput = event.(*events.MessageEvent).Message
+      case events.EventTypeToolCallStart:
+        toolCallsSummary = append(toolCallsSummary, event.(*events.ToolCallEvent).ToolCall.Name)
+      case events.EventTypeError:
+        execError = errors.New(event.(*events.ErrorEvent).Error)
+      }
     
-    switch event.EventType() {
-    case events.EventTypeMessage:
-      finalOutput = event.(*events.MessageEvent).Message
-    case events.EventTypeToolCallStart:
-      toolCallsSummary = append(toolCallsSummary, event.(*events.ToolCallEvent).ToolCall.Name)
-    case events.EventTypeError:
-      return errorResult(event.(*events.ErrorEvent).Error)
+    case <-subCtx.Done():
+      // 超时或被主智能体取消
+      if errors.Is(subCtx.Err(), context.DeadlineExceeded) {
+        return errorResult("子智能体执行超时（3 分钟）")
+      }
+      return errorResult("子智能体被主智能体取消")
     }
   }
   
-  // 11. 封装返回结果
+buildResult:
+  if execError != nil {
+    return errorResult(execError.Error())
+  }
+  
+  // 13. 封装返回结果
   result := SubagentResult{
     Success:          true,
     Output:           finalOutput,
@@ -254,17 +301,21 @@ func (st *SubagentTool) Invoke(funcName, funcArgs string) models.ToolCallResult 
 type SubagentEventBridge struct {
   parentEventCh chan<- events.AgentEvent
   subagentId    string
+  taskDesc      string  // 子任务描述（用于 HITL 审批上下文）
+  taskContext   string  // 子任务背景信息
 }
 
-func NewSubagentEventBridge(parentCh chan<- events.AgentEvent, subagentId string) *SubagentEventBridge {
+func NewSubagentEventBridge(parentCh chan<- events.AgentEvent, subagentId, taskDesc, taskContext string) *SubagentEventBridge {
   return &SubagentEventBridge{
     parentEventCh: parentCh,
     subagentId:    subagentId,
+    taskDesc:      taskDesc,
+    taskContext:   taskContext,
   }
 }
 
 func (bridge *SubagentEventBridge) forwardEvent(event events.AgentEvent) {
-  // 为事件增加 subagent 标识
+  // 为事件增加 subagent 标识和任务上下文
   switch e := event.(type) {
   case *events.ToolCallEvent:
     if e.Metadata == nil {
@@ -272,6 +323,8 @@ func (bridge *SubagentEventBridge) forwardEvent(event events.AgentEvent) {
     }
     e.Metadata["subagent_id"] = bridge.subagentId
     e.Metadata["is_subagent"] = true
+    e.Metadata["subagent_task"] = bridge.taskDesc       // 用于 HITL 审批显示
+    e.Metadata["subagent_context"] = bridge.taskContext
   case *events.MessageEvent:
     if e.Metadata == nil {
       e.Metadata = make(map[string]interface{})
@@ -391,16 +444,25 @@ interface ToolCallEvent {
 
 ### 6.3 熔断机制集成
 
+**重要变更**：子智能体使用独立的熔断器（与审查建议一致）
+
 ```go
-// SubagentTool 在构造时接收主智能体的 circuitBreaker
+// SubagentTool 在创建子 BaseAgent 时使用独立熔断器
 subAgent := agents.NewBaseAgent(/*...*/)
-subAgent.circuitBreaker = st.circuitBreaker  // 共享熔断计数器
+subAgent.circuitBreaker = circuitbreaker.NewToolCallCounter()  // 独立实例
 ```
 
+**设计理由**：
+- 子智能体处理独立的子任务，其工具调用失败不应触发主智能体的熔断
+- 如果共享熔断器，子智能体的 3 次 fileRead 失败会错误地触发主智能体的熔断提示
+- 独立熔断器确保主子智能体的熔断判定互不干扰
+
 **熔断行为**：
-- 子智能体调用工具失败时，计数累加到主智能体的熔断器
-- 如果某个工具在主+子智能体中累计失败 3 次，触发熔断
-- 熔断提示通过 `injectInterventionIfNeeded` 注入到主智能体的下一轮 LLM 调用
+- 子智能体调用工具失败时，计数累加到自己的熔断器
+- 如果子智能体某个工具失败 3 次，触发子智能体内部的熔断提示
+- 主智能体的熔断器不受影响
+
+**注意**：这与设计第一版的"共享熔断器"方案不同，采用独立熔断器是经过审查后的优化决策。
 
 ### 6.4 HITL（人工审批）集成
 
@@ -428,8 +490,9 @@ subAgent := agents.NewBaseAgent(
 | **禁止递归调用** | 参数校验：`allowed_tools` 包含 `dispatchSubagent` → 立即拒绝 |
 | **工具权限收束** | 子智能体的 `allowed_tools` 必须是主智能体工具集的子集 |
 | **上下文隔离** | 子智能体无法访问主智能体的 `ChatMemory`，只能通过 `context` 参数接收上下文 |
-| **超时保护** | 子智能体继承主智能体的 `context.Context`，主智能体被 Stop 时子智能体也中止 |
+| **超时保护** | 子智能体总超时 3 分钟；继承主智能体的 `context.Context`，主智能体取消时子智能体也中止 |
 | **迭代次数限制** | 子智能体 `MaxIterations` 固定为 10，低于主智能体默认值 |
+| **熔断隔离** | 子智能体使用独立熔断器，避免干扰主智能体的熔断判定 |
 
 ---
 
@@ -548,13 +611,15 @@ subAgent := agents.NewBaseAgent(
 
 ### 9.1 已识别风险
 
-| 风险 | 影响 | 缓解措施 |
-|------|------|----------|
-| **子智能体无限递归** | 资源耗尽 | 参数校验禁止 `dispatchSubagent` 出现在 `allowed_tools` |
-| **子智能体绕过熔断** | 工具调用死循环 | 子智能体与主智能体共享 `CircuitBreaker` |
-| **事件流阻塞** | 子智能体事件过多导致 channel 阻塞 | 使用 buffered channel 或异步转发 |
-| **Memory 泄漏** | 长时间运行导致 OOM | 子智能体 Memory 不注册到全局，依赖 GC 回收 |
-| **工具权限泄露** | 子智能体调用主智能体未授权的工具 | 严格白名单校验，工具集必须是主智能体的子集 |
+| 风险 | 影响 | 缓解措施 | 状态 |
+|------|------|----------|------|
+| **子智能体无限递归** | 资源耗尽 | 参数校验禁止 `dispatchSubagent` 出现在 `allowed_tools` | ✅ 已解决 |
+| **子智能体无法取消** | 资源泄漏、goroutine 泄漏 | 子智能体继承主智能体的 `context.Context`，支持取消和超时（3 分钟） | ✅ 已解决（审查后修复）|
+| **熔断误判** | 子智能体失败触发主智能体熔断 | 子智能体使用独立 `CircuitBreaker` | ✅ 已解决（审查后调整）|
+| **HITL 审批上下文缺失** | 用户无法做出明智的审批决策 | 事件 metadata 携带 `subagent_task` 和 `subagent_context` | ✅ 已解决（审查后补充）|
+| **事件流阻塞** | 子智能体事件过多导致 channel 阻塞 | 使用 buffered channel 或异步转发 | ⚠️ 待实现验证 |
+| **Memory 泄漏** | 长时间运行导致 OOM | 子智能体 Memory 不注册到全局，依赖 GC 回收 | ✅ 已解决 |
+| **工具权限泄露** | 子智能体调用主智能体未授权的工具 | 严格白名单校验，工具集必须是主智能体的子集 | ✅ 已解决 |
 
 ### 9.2 未来优化方向
 
@@ -630,6 +695,8 @@ export interface ToolCallEvent extends BaseEvent {
   metadata?: {
     subagent_id?: string;      // 子智能体 ID（如果来自子智能体）
     is_subagent?: boolean;      // 是否来自子智能体
+    subagent_task?: string;     // 子任务描述（用于 HITL 审批上下文）
+    subagent_context?: string;  // 子任务背景信息
     risk_level?: string;        // HITL 风险等级（仅 tool_call_interrupt）
     risk_reason?: string;       // HITL 风险原因（仅 tool_call_interrupt）
   };
@@ -639,6 +706,41 @@ export interface ToolCallEvent extends BaseEvent {
 ---
 
 **文档结束**
+
+---
+
+## 附录 B：设计审查记录
+
+### 审查轮次 1（2026-07-12）
+
+**审查结论**：Issues Found（10 个问题，其中 3 个 CRITICAL）
+
+**关键问题及修复**：
+
+1. **CRITICAL：Context 传递缺失** → 已修复
+   - Tool 接口扩展 `InvokeWithContext(ctx, funcName, funcArgs)`
+   - 子智能体继承主智能体的 context，支持取消和超时（3 分钟）
+   
+2. **CRITICAL：HITL 审批上下文不足** → 已修复
+   - 事件 metadata 增加 `subagent_task` 和 `subagent_context` 字段
+   - SubagentEventBridge 构造时传递任务描述和背景信息
+   
+3. **HIGH：熔断机制冲突** → 已修复
+   - 改为子智能体使用独立的 `CircuitBreaker`
+   - 避免子智能体失败误触主智能体熔断
+
+4. **HIGH：并发线程安全** → 待实现验证
+   - 设计已明确子智能体使用独立熔断器，避免并发写冲突
+   - 需在实现时确保 ToolCallCounter 的线程安全（如需并行调用）
+
+5. **MEDIUM：超时保护缺失** → 已修复
+   - 子智能体总超时设置为 3 分钟
+   - 使用 `context.WithTimeout` 实现
+
+**其他问题**：
+- Memory 边界验证、工具权限粒度、promptManager 持有方式等问题记录在审查报告中，将在实现阶段处理
+
+**审查后状态**：P0 问题已全部解决，设计方案可进入实现阶段
 
 ### 4.2 事件桥接器实现
 
