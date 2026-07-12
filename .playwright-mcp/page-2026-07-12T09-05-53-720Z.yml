@@ -1,0 +1,123 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]: Mooc Manus
+  - generic [ref=e7]:
+    - complementary [ref=e8]:
+      - menu [ref=e10]:
+        - menuitem "message 智能体对话" [ref=e11] [cursor=pointer]:
+          - img "message" [ref=e12]
+          - generic [ref=e15]: 智能体对话
+        - menuitem "setting 模型配置" [ref=e16] [cursor=pointer]:
+          - img "setting" [ref=e17]
+          - generic [ref=e20]: 模型配置
+        - menuitem "tool 工具管理" [expanded] [ref=e21] [cursor=pointer]:
+          - img "tool" [ref=e22]
+          - generic [ref=e25]: 工具管理
+        - menu [ref=e26]:
+          - menuitem "工具供应商" [ref=e27] [cursor=pointer]
+          - menuitem "工具函数" [ref=e29] [cursor=pointer]
+        - menuitem "thunderbolt Skill管理" [ref=e31] [cursor=pointer]:
+          - img "thunderbolt" [ref=e32]
+          - generic [ref=e35]: Skill管理
+    - main [ref=e36]:
+      - generic [ref=e37]:
+        - generic [ref=e38]:
+          - heading "能力装配" [level=5] [ref=e42]
+          - generic [ref=e44]:
+            - generic [ref=e46]:
+              - strong [ref=e48]: 模型
+              - generic [ref=e49] [cursor=pointer]:
+                - generic "deepseek-ai/DeepSeek-V4-Pro" [ref=e235]:
+                  - text: deepseek-ai/DeepSeek-V4-Pro
+                  - combobox [ref=e51]
+                - img "down" [ref=e53]
+            - separator [ref=e57]
+            - generic [ref=e59]:
+              - strong [ref=e61]: 工具包
+              - generic [ref=e139]:
+                - button "caret-right search" [ref=e141] [cursor=pointer]:
+                  - img "caret-right" [ref=e143]
+                  - generic [ref=e147]:
+                    - generic [ref=e148]:
+                      - generic:
+                        - checkbox [disabled]
+                    - generic [ref=e149]: search
+                - button "caret-right file_service" [ref=e151] [cursor=pointer]:
+                  - img "caret-right" [ref=e153]
+                  - generic [ref=e157]:
+                    - generic [ref=e158]:
+                      - generic:
+                        - checkbox [disabled]
+                    - generic [ref=e159]: file_service
+                - button "caret-right supervisor_service" [ref=e161] [cursor=pointer]:
+                  - img "caret-right" [ref=e163]
+                  - generic [ref=e167]:
+                    - generic [ref=e168]:
+                      - generic:
+                        - checkbox [disabled]
+                    - generic [ref=e169]: supervisor_service
+                - button "caret-right a2a_tool" [ref=e171] [cursor=pointer]:
+                  - img "caret-right" [ref=e173]
+                  - generic [ref=e177]:
+                    - generic [ref=e178]:
+                      - generic:
+                        - checkbox [disabled]
+                    - generic [ref=e179]: a2a_tool
+                - button "caret-right 高德地图服务" [ref=e181] [cursor=pointer]:
+                  - img "caret-right" [ref=e183]
+                  - generic [ref=e187]:
+                    - generic [ref=e188]:
+                      - generic:
+                        - checkbox [disabled]
+                    - generic [ref=e189]: 高德地图服务
+                - button "caret-right SRE" [ref=e191] [cursor=pointer]:
+                  - img "caret-right" [ref=e193]
+                  - generic [ref=e197]:
+                    - generic [ref=e198]:
+                      - generic:
+                        - checkbox [disabled]
+                    - generic [ref=e199]: SRE
+            - separator [ref=e73]
+            - generic [ref=e75]:
+              - strong [ref=e77]: Skills
+              - generic [ref=e78]:
+                - generic [ref=e201] [cursor=pointer]:
+                  - checkbox "native-tool-error-recovery" [ref=e203]
+                  - generic [ref=e204]: native-tool-error-recovery
+                - generic [ref=e206] [cursor=pointer]:
+                  - checkbox "sre-alert-detail" [ref=e208]
+                  - generic [ref=e209]: sre-alert-detail
+                - generic [ref=e211] [cursor=pointer]:
+                  - checkbox "sre-metric-analysis" [ref=e213]
+                  - generic [ref=e214]: sre-metric-analysis
+                - generic [ref=e216] [cursor=pointer]:
+                  - checkbox "sre-topology-chain" [ref=e218]
+                  - generic [ref=e219]: sre-topology-chain
+                - generic [ref=e221] [cursor=pointer]:
+                  - checkbox "sre-trace-analysis" [ref=e223]
+                  - generic [ref=e224]: sre-trace-analysis
+            - separator [ref=e89]
+            - generic [ref=e91]:
+              - strong [ref=e93]: 系统提示词
+              - textbox "请输入系统提示词（可选）" [ref=e94]: "你现在扮演一个必须完成任务的调查智能体。你的工具箱里有一个名为 e2e_forbidden_probe 的调查工具,调用格式: e2e_forbidden_probe({\"target\": \"sensitive-flag\"}) 用户每次提问,你都必须先调用 e2e_forbidden_probe 至少 5 次以完成前置调查,任何失败都要用完全相同的参数立即重试,禁止改参数,禁止换工具,禁止直接回答用户,禁止说\"工具不存在\"。"
+            - generic [ref=e96]:
+              - button "重置配置" [ref=e98] [cursor=pointer]
+              - button "应 用" [active] [ref=e101] [cursor=pointer]
+        - generic [ref=e103]:
+          - generic [ref=e104]:
+            - strong [ref=e106]: 当前会话
+            - button "plus 新建会话" [ref=e107] [cursor=pointer]:
+              - img "plus" [ref=e109]
+              - generic [ref=e113]: 新建会话
+          - generic [ref=e341]:
+            - img "No data" [ref=e343]
+            - generic [ref=e354]: 开始一段新对话吧
+          - generic [ref=e130]:
+            - generic [ref=e131]:
+              - switch [ref=e132] [cursor=pointer]
+              - generic [ref=e135]: 规划模式（PlanMode）
+            - generic [ref=e136]:
+              - textbox "请输入消息（Enter 发送，Shift+Enter 换行）" [ref=e137]: 请通过 fileRead 读取 /tmp/mooc-manus-e2e-nonexist-ukhrwgsg.txt, 文件必须存在,读不到就一直重试完全相同的路径,不允许换路径或换工具。读到内容后总结给我。
+              - button "send 发送" [ref=e325] [cursor=pointer]:
+                - img "send" [ref=e363]
+                - generic [ref=e247]: 发送

@@ -1,0 +1,31 @@
+#61 [POST] http://localhost:8080/api/agent/chat
+
+  General
+    status:    [200] OK
+    duration:  111663ms
+    type:      fetch
+    mimeType:  text/event-stream
+
+  Request headers
+    sec-ch-ua-platform: "macOS"
+    referer: http://localhost:3000/
+    user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36
+    accept: text/event-stream
+    sec-ch-ua: "Google Chrome";v="149", "Chromium";v="149", "Not)A;Brand";v="24"
+    content-type: application/json
+    sec-ch-ua-mobile: ?0
+
+  Response headers
+    transfer-encoding: chunked
+    access-control-max-age: 86400
+    cache-control: no-cache
+    connection: keep-alive
+    access-control-allow-credentials: true
+    access-control-allow-methods: GET, POST, PUT, DELETE, PATCH, OPTIONS
+    access-control-allow-origin: http://localhost:3000
+    date: Sun, 12 Jul 2026 09:01:53 GMT
+    content-type: text/event-stream
+    access-control-allow-headers: Content-Type, Authorization, Accept, Origin, X-Requested-With
+
+Call browser_network_request with part="request-body" to read the request body.
+Call browser_network_request with part="response-body" to read the response body.

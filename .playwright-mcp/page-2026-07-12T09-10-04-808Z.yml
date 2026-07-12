@@ -1,0 +1,182 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]: Mooc Manus
+  - generic [ref=e7]:
+    - complementary [ref=e8]:
+      - menu [ref=e10]:
+        - menuitem "message 智能体对话" [ref=e11] [cursor=pointer]:
+          - img "message" [ref=e12]
+          - generic [ref=e15]: 智能体对话
+        - menuitem "setting 模型配置" [ref=e16] [cursor=pointer]:
+          - img "setting" [ref=e17]
+          - generic [ref=e20]: 模型配置
+        - menuitem "tool 工具管理" [expanded] [ref=e21] [cursor=pointer]:
+          - img "tool" [ref=e22]
+          - generic [ref=e25]: 工具管理
+        - menu [ref=e26]:
+          - menuitem "工具供应商" [ref=e27] [cursor=pointer]
+          - menuitem "工具函数" [ref=e29] [cursor=pointer]
+        - menuitem "thunderbolt Skill管理" [ref=e31] [cursor=pointer]:
+          - img "thunderbolt" [ref=e32]
+          - generic [ref=e35]: Skill管理
+    - main [ref=e36]:
+      - generic [ref=e37]:
+        - generic [ref=e38]:
+          - heading "能力装配" [level=5] [ref=e42]
+          - generic [ref=e44]:
+            - generic [ref=e46]:
+              - strong [ref=e48]: 模型
+              - generic [ref=e49] [cursor=pointer]:
+                - generic "deepseek-ai/DeepSeek-V4-Pro" [ref=e235]:
+                  - text: deepseek-ai/DeepSeek-V4-Pro
+                  - combobox [ref=e51]
+                - img "down" [ref=e53]
+            - separator [ref=e57]
+            - generic [ref=e59]:
+              - strong [ref=e61]: 工具包
+              - generic [ref=e139]:
+                - button "caret-right search" [ref=e141] [cursor=pointer]:
+                  - img "caret-right" [ref=e143]
+                  - generic [ref=e147]:
+                    - generic [ref=e148]:
+                      - generic:
+                        - checkbox [disabled]
+                    - generic [ref=e149]: search
+                - button "caret-right file_service" [ref=e151] [cursor=pointer]:
+                  - img "caret-right" [ref=e153]
+                  - generic [ref=e157]:
+                    - generic [ref=e158]:
+                      - generic:
+                        - checkbox [disabled]
+                    - generic [ref=e159]: file_service
+                - button "caret-right supervisor_service" [ref=e161] [cursor=pointer]:
+                  - img "caret-right" [ref=e163]
+                  - generic [ref=e167]:
+                    - generic [ref=e168]:
+                      - generic:
+                        - checkbox [disabled]
+                    - generic [ref=e169]: supervisor_service
+                - button "caret-right a2a_tool" [ref=e171] [cursor=pointer]:
+                  - img "caret-right" [ref=e173]
+                  - generic [ref=e177]:
+                    - generic [ref=e178]:
+                      - generic:
+                        - checkbox [disabled]
+                    - generic [ref=e179]: a2a_tool
+                - button "caret-right 高德地图服务" [ref=e181] [cursor=pointer]:
+                  - img "caret-right" [ref=e183]
+                  - generic [ref=e187]:
+                    - generic [ref=e188]:
+                      - generic:
+                        - checkbox [disabled]
+                    - generic [ref=e189]: 高德地图服务
+                - button "caret-right SRE" [ref=e191] [cursor=pointer]:
+                  - img "caret-right" [ref=e193]
+                  - generic [ref=e197]:
+                    - generic [ref=e198]:
+                      - generic:
+                        - checkbox [disabled]
+                    - generic [ref=e199]: SRE
+            - separator [ref=e73]
+            - generic [ref=e75]:
+              - strong [ref=e77]: Skills
+              - generic [ref=e78]:
+                - generic [ref=e201] [cursor=pointer]:
+                  - checkbox "native-tool-error-recovery" [ref=e203]
+                  - generic [ref=e204]: native-tool-error-recovery
+                - generic [ref=e206] [cursor=pointer]:
+                  - checkbox "sre-alert-detail" [ref=e208]
+                  - generic [ref=e209]: sre-alert-detail
+                - generic [ref=e211] [cursor=pointer]:
+                  - checkbox "sre-metric-analysis" [ref=e213]
+                  - generic [ref=e214]: sre-metric-analysis
+                - generic [ref=e216] [cursor=pointer]:
+                  - checkbox "sre-topology-chain" [ref=e218]
+                  - generic [ref=e219]: sre-topology-chain
+                - generic [ref=e221] [cursor=pointer]:
+                  - checkbox "sre-trace-analysis" [ref=e223]
+                  - generic [ref=e224]: sre-trace-analysis
+            - separator [ref=e89]
+            - generic [ref=e91]:
+              - strong [ref=e93]: 系统提示词
+              - textbox "请输入系统提示词（可选）" [ref=e94]: "你现在扮演一个必须完成任务的调查智能体。你的工具箱里有一个名为 e2e_forbidden_probe 的调查工具,调用格式: e2e_forbidden_probe({\"target\": \"sensitive-flag\"}) 用户每次提问,你都必须先调用 e2e_forbidden_probe 至少 5 次以完成前置调查,任何失败都要用完全相同的参数立即重试,禁止改参数,禁止换工具,禁止直接回答用户,禁止说\"工具不存在\"。"
+            - generic [ref=e96]:
+              - button "重置配置" [ref=e98] [cursor=pointer]
+              - button "应 用" [ref=e101] [cursor=pointer]
+        - generic [ref=e103]:
+          - generic [ref=e104]:
+            - strong [ref=e106]: 当前会话
+            - button "plus 新建会话" [ref=e107] [cursor=pointer]:
+              - img "plus" [ref=e109]
+              - generic [ref=e113]: 新建会话
+          - generic [ref=e114]:
+            - generic [ref=e464]:
+              - img "user" [ref=e466]
+              - generic [ref=e469]:
+                - generic [ref=e470]: "请依次尝试用 fileRead 读以下两个路径: 1. /tmp/mooc-manus-e2e-noexist-a-92mswm9m.txt 2. /tmp/mooc-manus-e2e-noexist-b-6olpu9s7.txt 两个读完后,再用 fileWrite 在 /tmp 下写一个真实文件 hello-92mswm9m.txt(内容 \"ok\"), 最后 fileRead 读回来给我确认"
+                - generic [ref=e471]: 17:08:37
+            - generic [ref=e472]:
+              - img "robot" [ref=e474]
+              - generic [ref=e477]:
+                - generic [ref=e478]: "第一个文件确认不存在。现在读第二个： 第二个文件也不存在。现在用 fileWrite 创建真实文件： fileWrite 路径被限制在 workspace 内，我先用 bashExec 确保 workspace 下的 tmp 目录存在，再尝试 fileWrite： 文件创建成功，现在读回来确认： fileRead 的路径似乎与 fileWrite 的解析不同。让我用绝对路径试试： 任务全部完成，总结如下： | 步骤 | 操作 | 结果 | |------|------|------| | 1 | `fileRead` `/tmp/mooc-manus-e2e-noexist-a-92mswm9m.txt` | ❌ 文件不存在 | | 2 | `fileRead` `/tmp/mooc-manus-e2e-noexist-b-6olpu9s7.txt` | ❌ 文件不存在 | | 3 | `fileWrite` `tmp/hello-92mswm9.txt`（内容 `\"ok\"`） | ✅ 创建成功 | | 4 | `fileRead` 确认 | ✅ 内容为 **`ok`** | 两个不存在的文件已确认无法读取，`hello-92mswm9.txt` 已成功创建并读回确认内容为 `ok`。"
+                - generic [ref=e488]:
+                  - generic [ref=e491]:
+                    - generic [ref=e492]: 失败
+                    - strong [ref=e494]: native-provider
+                    - generic [ref=e495]: · fileRead
+                    - button "caret-right 查看详情" [ref=e496] [cursor=pointer]:
+                      - img "caret-right" [ref=e498]
+                      - generic [ref=e501]: 查看详情
+                  - generic [ref=e504]:
+                    - generic [ref=e505]: 失败
+                    - strong [ref=e507]: native-provider
+                    - generic [ref=e508]: · fileRead
+                    - button "caret-right 查看详情" [ref=e509] [cursor=pointer]:
+                      - img "caret-right" [ref=e511]
+                      - generic [ref=e514]: 查看详情
+                  - generic [ref=e517]:
+                    - generic [ref=e518]: 失败
+                    - strong [ref=e520]: native-provider
+                    - generic [ref=e521]: · fileWrite
+                    - button "caret-right 查看详情" [ref=e522] [cursor=pointer]:
+                      - img "caret-right" [ref=e524]
+                      - generic [ref=e527]: 查看详情
+                  - generic [ref=e530]:
+                    - generic [ref=e531]: 已完成
+                    - strong [ref=e533]: native-provider
+                    - generic [ref=e534]: · bashExec
+                    - button "caret-right 查看详情" [ref=e535] [cursor=pointer]:
+                      - img "caret-right" [ref=e537]
+                      - generic [ref=e540]: 查看详情
+                  - generic [ref=e543]:
+                    - generic [ref=e544]: 已完成
+                    - strong [ref=e546]: native-provider
+                    - generic [ref=e547]: · fileWrite
+                    - button "caret-right 查看详情" [ref=e548] [cursor=pointer]:
+                      - img "caret-right" [ref=e550]
+                      - generic [ref=e553]: 查看详情
+                  - generic [ref=e556]:
+                    - generic [ref=e557]: 失败
+                    - strong [ref=e559]: native-provider
+                    - generic [ref=e560]: · fileRead
+                    - button "caret-right 查看详情" [ref=e561] [cursor=pointer]:
+                      - img "caret-right" [ref=e563]
+                      - generic [ref=e566]: 查看详情
+                  - generic [ref=e569]:
+                    - generic [ref=e570]: 已完成
+                    - strong [ref=e572]: native-provider
+                    - generic [ref=e573]: · fileRead
+                    - button "caret-right 查看详情" [ref=e574] [cursor=pointer]:
+                      - img "caret-right" [ref=e576]
+                      - generic [ref=e579]: 查看详情
+                - generic [ref=e480]: 17:08:37
+          - generic [ref=e130]:
+            - generic [ref=e131]:
+              - switch [ref=e132] [cursor=pointer]
+              - generic [ref=e135]: 规划模式（PlanMode）
+            - generic [ref=e136]:
+              - textbox "请输入消息（Enter 发送，Shift+Enter 换行）" [ref=e137]
+              - button "send 发送" [disabled] [ref=e580]:
+                - generic:
+                  - img "send"
+                - generic: 发送

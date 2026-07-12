@@ -1,0 +1,11 @@
+54. [GET] http://localhost:8080/api/app/config => [200] OK
+55. [GET] http://localhost:8080/api/tools/provider/list => [200] OK
+56. [POST] http://localhost:8080/api/skill/listAll => [200] OK
+57. [GET] http://localhost:8080/api/app/config => [200] OK
+58. [GET] http://localhost:8080/api/tools/provider/list => [200] OK
+59. [POST] http://localhost:8080/api/skill/listAll => [200] OK
+60. [GET] http://localhost:8080/api/tools/function/list?providerId=1ced76b9-33f2-42ad-acfc-8baf4f118216 => [200] OK
+61. [POST] http://localhost:8080/api/agent/chat => [200] OK
+62. [POST] http://localhost:8080/api/agent/message/stop => [200] OK
+
+Note: 53 static requests not shown, run with "static" option to see them.
