@@ -10,3 +10,7 @@ Thumbs.db
 
 # Playwright MCP
 .playwright-mcp/
+
+# E2E / 临时产物（截图、SSE 抓包、汇总报告等）
+tmp/
+
