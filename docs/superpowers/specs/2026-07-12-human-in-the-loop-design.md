@@ -411,11 +411,11 @@ HTTP 状态码映射：`accepted → 200` / `already_decided → 409` / `not_fou
 package interrupt
 
 const (
-    MsgUserReject     = "用户拒绝执行此工具调用。"
-    MsgUserRejectWithFeedback = "用户拒绝执行此工具调用。用户反馈：%s"
-    MsgTimeout        = "用户在 5 分钟内未确认此工具调用，已按拒绝处理。"
-    MsgUserStop       = "用户中止了本次对话，此工具调用未执行。"
-    MsgSiblingSkipped = "因用户拒绝了本轮的高危调用，此工具调用未执行。"
+    MsgUserReject                = "用户拒绝执行此工具调用。"
+    MsgUserRejectWithFeedbackTpl = "用户拒绝执行此工具调用。用户反馈：%s" // fmt 模板，Tpl 后缀表明需 Sprintf
+    MsgTimeout                   = "用户在 5 分钟内未确认此工具调用，已按拒绝处理。"
+    MsgUserStop                  = "用户中止了本次对话，此工具调用未执行。"
+    MsgSiblingSkipped            = "因用户拒绝了本轮的高危调用，此工具调用未执行。"
 )
 ```
 
@@ -540,7 +540,7 @@ func (a *BaseAgent) InvokeToolCalls(ctx context.Context, toolCalls []llm.ToolCal
                 case agents.DecisionReject:
                     content := interrupt.MsgUserReject
                     if decision.Feedback != "" {
-                        content = fmt.Sprintf(interrupt.MsgUserRejectWithFeedback, decision.Feedback)
+                        content = fmt.Sprintf(interrupt.MsgUserRejectWithFeedbackTpl, decision.Feedback)
                     }
                     toolMessages = append(toolMessages, buildRejectMessage(toolCall, content))
                     for _, remaining := range toolCalls[i+1:] {
@@ -841,6 +841,7 @@ func NewBaseAgent(cfg models.AgentConfig, inv invoker.Invoker, mem *memory.ChatM
 | I-10 | ReActAgent / PlanAgent 覆盖 | 分别用 ReActAgent、PlanAgent 跑 I-01 | 中断机制生效（继承自 BaseAgent） |
 | I-11 | Resume 幂等 | Register 后连点两次 Resume | 第一次 200 accepted、第二次 404 not_found |
 | I-12 | Timer 与 Resume 竞态 | `WaitTimeout` = 10ms，10ms 后同时触发 Resume | 二者之一是 accepted，另一个是 already_decided |
+| I-13 | Agent ctx.Done 抢先命中 | Register 后立即 `cancelFunc()`，同时 Resume/Timer 也在 fire | Agent goroutine 走 `ctx.Done` 分支 return，Resume 返回结果与实际 slot 状态一致（either accepted-but-discarded 或 already_decided） |
 
 测试基建：需要一个 `MockInvoker`（按序返回预置消息）+ `MockTool`（尤其是 bashExec mock，避免真跑 shell）——在实施 plan 里单开子任务。
 
@@ -954,7 +955,7 @@ func NewBaseAgent(cfg models.AgentConfig, inv invoker.Invoker, mem *memory.ChatM
 2. PF-01~PF-04 全过
 3. RB-01~RB-04 全过
 4. EF-01 = 3/3、EF-02 = 0/2、EF-03/EF-04 通过
-5. 单元测试覆盖率 ≥ 85%（新增代码）
+5. 单元测试覆盖率 ≥ 85%（新增代码）—— 用 `go test -coverpkg=./internal/domains/models/interrupt/...,./internal/applications/services/...` 限定统计口径，避免全项目覆盖率稀释真实数据
 6. golangci-lint 全过
 7. Docs/E2E 目录含 `human-in-the-loop.md` 说明
 
