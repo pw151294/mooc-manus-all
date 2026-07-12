@@ -1,7 +1,7 @@
 # E2E: 工具调用熔断干预机制
 
 对应改动:
-- 后端 `feature/tool-call-circuit-breaker`:`mooc-manus/internal/domains/models/circuitbreaker/` + `services/agents/base.go` 5 处埋点
+- 后端:`mooc-manus/internal/domains/models/circuitbreaker/` + `services/agents/base.go` 5 处埋点
 - 设计文档:`docs/superpowers/specs/2026-07-11-tool-call-circuit-breaker-design.md`
 - 功能文档:`mooc-manus/docs/features/tool-call-circuit-breaker.md`
 
@@ -22,7 +22,6 @@
 `browser_navigate` / `browser_wait_for` / `browser_snapshot` / `browser_click` / `browser_type` / `browser_console_messages` / `browser_network_requests` / `browser_take_screenshot` / `browser_evaluate` / `browser_run_code`
 
 ## 通用工作方式(CC 必须遵守)
-
 1. 每个用例开始前先 `browser_snapshot` 拿 aria tree,别盲点
 2. 交互后用 `browser_wait_for(text=..., time?=<秒>)` 等具体文本 / 元素出现,禁止固定 sleep
 3. 每个判定单独 assert;判定失败立刻 `browser_take_screenshot` 存 `tmp/e2e/case-<N>-fail.png` 后继续跑下一个用例

@@ -1,0 +1,71 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]: Mooc Manus
+  - generic [ref=e7]:
+    - complementary [ref=e8]:
+      - menu [ref=e10]:
+        - menuitem "message 智能体对话" [ref=e11] [cursor=pointer]:
+          - img "message" [ref=e12]
+          - generic [ref=e15]: 智能体对话
+        - menuitem "setting 模型配置" [ref=e16] [cursor=pointer]:
+          - img "setting" [ref=e17]
+          - generic [ref=e20]: 模型配置
+        - menuitem "tool 工具管理" [expanded] [ref=e21] [cursor=pointer]:
+          - img "tool" [ref=e22]
+          - generic [ref=e25]: 工具管理
+        - menu [ref=e26]:
+          - menuitem "工具供应商" [ref=e27] [cursor=pointer]
+          - menuitem "工具函数" [ref=e29] [cursor=pointer]
+        - menuitem "thunderbolt Skill管理" [ref=e31] [cursor=pointer]:
+          - img "thunderbolt" [ref=e32]
+          - generic [ref=e35]: Skill管理
+    - main [ref=e36]:
+      - generic [ref=e37]:
+        - generic [ref=e38]:
+          - heading "能力装配" [level=5] [ref=e42]
+          - generic [ref=e44]:
+            - generic [ref=e46]:
+              - strong [ref=e48]: 模型
+              - generic [ref=e49] [cursor=pointer]:
+                - generic [ref=e50]:
+                  - generic: 请选择模型配置
+                  - combobox [ref=e51]
+                - img "down" [ref=e53]
+            - separator [ref=e57]
+            - generic [ref=e59]:
+              - strong [ref=e61]: 工具包
+              - generic [ref=e63]:
+                - img "No data" [ref=e65]
+                - generic [ref=e71]: 暂无工具供应商
+            - separator [ref=e73]
+            - generic [ref=e75]:
+              - strong [ref=e77]: Skills
+              - generic [ref=e79]:
+                - img "No data" [ref=e81]
+                - generic [ref=e87]: 暂无 Skill
+            - separator [ref=e89]
+            - generic [ref=e91]:
+              - strong [ref=e93]: 系统提示词
+              - textbox "请输入系统提示词（可选）" [ref=e94]
+            - generic [ref=e96]:
+              - button "重置配置" [ref=e98] [cursor=pointer]
+              - button "应 用" [ref=e101] [cursor=pointer]
+        - generic [ref=e103]:
+          - generic [ref=e104]:
+            - strong [ref=e106]: 当前会话
+            - button "plus 新建会话" [ref=e107] [cursor=pointer]:
+              - img "plus" [ref=e109]
+              - generic [ref=e113]: 新建会话
+          - generic [ref=e116]:
+            - img "No data" [ref=e118]
+            - generic [ref=e129]: 开始一段新对话吧
+          - generic [ref=e130]:
+            - generic [ref=e131]:
+              - switch [ref=e132] [cursor=pointer]
+              - generic [ref=e135]: 规划模式（PlanMode）
+            - generic [ref=e136]:
+              - textbox "请输入消息（Enter 发送，Shift+Enter 换行）" [ref=e137]
+              - button "send 发送" [disabled] [ref=e138]:
+                - generic:
+                  - img "send"
+                - generic: 发送
