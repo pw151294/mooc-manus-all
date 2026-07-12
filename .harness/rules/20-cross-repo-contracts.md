@@ -11,6 +11,7 @@ severity: high
 
 - **通用消息**：`title` / `message` / `message_end`
 - **工具调用**：`tool_call_start` / `tool_call_complete` / `tool_call_fail`
+- **HITL 审批**：`tool_call_interrupt`（高危工具需用户审批，前端渲染 InterruptCard，通过 `/api/agent/resume` 回投决策）
 - **Plan 流转**：`plan_create_success` / `plan_update_success` / `plan_update_failed` / `plan_completed`
 - **Step 流转**：`step_start` / `step_complete` / `step_fail`
 - **系统控制**：`wait` / `error` / `done`
@@ -32,6 +33,36 @@ severity: high
 当前无版本号，默认 `/api/v1`。引入 breaking change 时：
 - 先开 ADR 讨论迁移方案
 - 通过 `/api/v2` 并行新旧两版，保留旧版至少 1 个 release cycle
+
+## HITL 接口契约
+
+### POST /api/agent/resume
+
+用户对高危工具调用（`tool_call_interrupt` 事件）的决策回投接口。
+
+**请求头**：`Content-Type: application/json`
+
+**请求体**：
+```json
+{
+  "messageId":  "string, 必填, 来自 tool_call_interrupt 事件 payload",
+  "toolCallId": "string, 必填, 同上",
+  "decision":   "approve | reject",
+  "feedback":   "string, 可选, 仅 decision=reject 时前端可传"
+}
+```
+
+**响应**：
+| 状态码 | 响应体 | 语义 |
+|--------|--------|------|
+| 200 | `{"status":"accepted"}` | 决策生效，Agent 继续或按拒绝分支收敛 |
+| 409 | `{"status":"already_decided"}` | 已被 timer / 其他路径抢先决策 |
+| 404 | `{"status":"not_found"}` | pending 不存在或 toolCallId 不匹配 |
+| 400 | `{"error":"..."}` | 请求体校验失败（缺字段 / decision 非法值） |
+
+**约束**：
+- 超时窗口 5 分钟，超时自动按拒绝处理，Agent 收到 `MsgTimeout` tool result
+- Stop 路径会解绑 pending 并注入 `DecisionCancel`；此时 Resume 返回 `not_found`
 
 ## Agent 行为
 
