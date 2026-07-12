@@ -1,1 +1,2 @@
-未找到熔断日志
+2026-07-12T21:50:04 HITL Resume 生效 mid=0ff8ad0f-e81c-4da7-bd3f-a1928e0c959c decision=approve
+2026-07-12T21:51:11 SSE connection closed

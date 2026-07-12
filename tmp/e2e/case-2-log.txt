@@ -1,1 +1,1 @@
-2026-07-12T17:06:17.513+0800	WARN	logger/loggers.go:191	检测到工具调用死循环，注入干预提示	{"triggeredCount": 1, "tools": ["fileRead"]}
+2026-07-12T21:53:59 HITL Resume 生效 mid=30f55fa8-9c12-471c-a875-db8881e42c5b decision=reject

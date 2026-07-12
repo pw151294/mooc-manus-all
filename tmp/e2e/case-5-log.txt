@@ -1,0 +1,6 @@
+2026-07-12T21:59:06 stop conversation requested conversationId=5a6febfc
+2026-07-12T22:00:16 stop message requested messageId=f910799f
+2026-07-12T22:00:16 stop message: context cancelled messageId=f910799f
+2026-07-12T22:00:16 stop message completed cleaned={"sse":true,"skill":true,"nativeWorkspace":true}
+2026-07-12T22:00:16 SSE connection closed
+2026-07-12T22:00:20 close chat messageId=f910799f

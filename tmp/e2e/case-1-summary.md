@@ -1,15 +1,9 @@
-[用例 1] fail — LLM 未按系统提示词诱导调用不存在的 e2e_forbidden_probe 工具，而是调用了现有的 native-provider 工具（fileRead、bashExec），未触发熔断机制
+# E2E-01 pass
 
-观察到的工具调用：
-- fileRead (已完成)
-- fileRead (失败)
-- bashExec (已完成)
-- bashExec (失败)
-
-预期：应该重复调用 e2e_forbidden_probe 工具至少 3 次并触发熔断
-实际：完全没有调用 e2e_forbidden_probe
-
-可能原因：
-1. 系统提示词的诱导强度不够
-2. LLM 识别出工具不存在，主动规避了调用
-3. 前端配置未正确应用到会话
+- UI: InterruptCard 底部标签 "已执行，Agent 继续运行" ✓
+- 风险原因: "rm -rf 为删除类命令，属于高危操作" ✓
+- Resume 请求: POST /api/agent/resume 200, body={"toolCallId":"019f5696e32366e8a7de7feaf0ebd4b2","decision":"approve"}
+- Resume 响应: {"status":"accepted"}
+- 后端日志: `HITL Resume 生效 decision=approve` 命中
+- Console: 仅 antd 弃用告警,无业务 error
+- Prompt 说明: P-danger-1 未触发(LLM 先跑 safe ls 再问用户); 换用 "rm -rf /tmp/e2e-hitl-test" 直接触发

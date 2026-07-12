@@ -1,4 +1,2 @@
-Total messages: 5 (Errors: 1, Warnings: 1)
-Returning 1 messages for level "error"
-
-[ERROR] Warning: [antd: Space] `direction` is deprecated. Please use `orientation` instead. @ http://localhost:3000/node_modules/.vite/deps/antd.js?v=e1a41e59:1274
+[ERROR] antd Space direction deprecated (无关)
+[ERROR] antd Alert message deprecated (无关)
