@@ -1,0 +1,7 @@
+Total messages: 6 (Errors: 1, Warnings: 2)
+Returning 4 messages for level "info"
+
+[INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/node_modules/.vite/deps/client--C8cioMw.js?v=e1a41e59:14335
+[ERROR] Warning: [antd: Space] `direction` is deprecated. Please use `orientation` instead. @ http://localhost:3000/node_modules/.vite/deps/antd.js?v=e1a41e59:1274
+[WARNING] SSE connection timeout @ http://localhost:3000/src/api/sse.ts:155
+[WARNING] SSE 连接已中断 @ http://localhost:3000/src/api/sse.ts:58

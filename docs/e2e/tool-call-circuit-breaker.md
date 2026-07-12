@@ -1,7 +1,7 @@
 # E2E: 工具调用熔断干预机制
 
 对应改动:
-- 后端 `feature/tool-call-circuit-breaker`:`mooc-manus/internal/domains/models/circuitbreaker/` + `services/agents/base.go` 5 处埋点
+- 后端:`mooc-manus/internal/domains/models/circuitbreaker/` + `services/agents/base.go` 5 处埋点
 - 设计文档:`docs/superpowers/specs/2026-07-11-tool-call-circuit-breaker-design.md`
 - 功能文档:`mooc-manus/docs/features/tool-call-circuit-breaker.md`
 
