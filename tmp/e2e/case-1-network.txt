@@ -1,0 +1,3 @@
+63. [POST] http://localhost:8080/api/agent/chat => [200] OK
+
+Note: 55 static requests not shown, run with "static" option to see them.
