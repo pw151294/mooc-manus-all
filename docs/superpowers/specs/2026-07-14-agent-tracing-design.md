@@ -261,8 +261,13 @@ var globalTracer atomic.Pointer[Tracer]
 func SetGlobal(t *Tracer)
 func Global() *Tracer
 
-// Domain 层埋点使用
+// Domain 层埋点使用：从 ctx 取 parent 创建子 span
 func StartSpanFromContext(ctx context.Context, spanType SpanType, opName string) (context.Context, *Span)
+
+// 从 ctx 取当前 span（不创建新 span）；用于向"已经创建但需要补 tag/log"的 span 追加数据
+// 典型场景：BaseAgent.StreamingInvoke 入口拿到 Application 层创建的 AGENT_ROOT，补齐 domain 层才知道的 tags
+// ctx 无 span 时返回 no-op Span（所有方法空实现），业务不 panic
+func SpanFromContext(ctx context.Context) *Span
 ```
 
 **关键规则**：
@@ -378,13 +383,100 @@ CREATE TABLE ai_span (
 | 位置 | 埋点动作 | Span 类型 |
 |------|---------|-----------|
 | `applications/services/agent.go` `Chat()` 进入时 | `ctx, root := tracer.StartRootSpan(ctx, messageId)` + `defer root.End()` | `AGENT_ROOT` |
-| `domains/services/agents/base.go` `StreamingInvoke` 循环内每轮迭代开始 | `ctx, round := tracing.StartSpanFromContext(ctx, AGENT_ROUND, "")` + `defer round.End()` | `AGENT_ROUND` |
-| `base.go` `StreamingInvokeLLM` 调用前 | `ctx, llm := tracing.StartSpanFromContext(ctx, LLM_CALL, "")` + `defer llm.End()` | `LLM_CALL` |
-| `base.go` `InvokeToolCalls` 进入时 | `ctx, batch := tracing.StartSpanFromContext(ctx, TOOL_BATCH, "")` + `defer batch.End()` | `TOOL_BATCH` |
-| `base.go` `InvokeToolCalls` 内每次进入 tool 执行分支 | `ctx, ts := tracing.StartSpanFromContext(ctx, TOOL_CALL, funcName)` + `defer ts.End()` | `TOOL_CALL` |
+| `domains/services/agents/base.go` `StreamingInvoke` **循环体内**（用匿名函数隔离） | 见 4.1.1 循环埋点模板 | `AGENT_ROUND` |
+| `base.go` `StreamingInvokeLLM` 函数入口（**签名新增 `ctx context.Context`**） | 函数内 `ctx, llmSpan := tracing.StartSpanFromContext(ctx, LLM_CALL, "")` + `defer llmSpan.End()` | `LLM_CALL` |
+| `base.go` `InvokeToolCalls` 函数入口 | 函数内 `ctx, batchSpan := tracing.StartSpanFromContext(ctx, TOOL_BATCH, "")` + `defer batchSpan.End()` | `TOOL_BATCH` |
+| `base.go` `InvokeToolCalls` **for 循环体内**（用匿名函数隔离）每次进入 tool 执行分支 | 见 4.1.1 循环埋点模板 | `TOOL_CALL` |
 | 同上，但工具为子智能体（`SubagentTool`）时 | `SpanType` 替换为 `SUBAGENT_CALL` | `SUBAGENT_CALL` |
 
 **注意**：本期 `Invoke`（非流式）也需要同步覆盖（对应逻辑一致，位置在同一文件），但主链路测试聚焦 `StreamingInvoke`。
+
+#### 4.1.1 循环埋点模板（必读，避免 Go defer 陷阱）
+
+**问题背景**：Go 的 `defer` 是**函数级作用域**，直接在 for 循环里写 `defer span.End()` 会导致：
+1. 所有轮次的 span 全部延迟到**外层函数返回**才 End —— `EndTime` / `LatencyMs` 完全失真
+2. 若循环内 `ctx, span := StartSpanFromContext(ctx, ...)` 用 `:=` 覆盖外层 ctx，第 N+1 轮的 parent 会指向第 N 轮同类型 span，导致 AGENT_ROUND 之间"串成链"而不是"并列挂在 root 下"
+
+**修复模板**：**每轮循环体用匿名函数包裹，且循环内 ctx 用独立变量名**。
+
+**AGENT_ROUND（`StreamingInvoke` 循环体，`base.go:466-499`）**：
+
+```go
+for round < a.agentConfig.MaxIterations {
+    select {
+    case <-ctx.Done():
+        // ... 保持现有逻辑
+    default:
+    }
+    round++
+
+    // 每轮用匿名函数隔离 defer 作用域
+    shouldContinue := func() bool {
+        roundCtx, roundSpan := tracing.StartSpanFromContext(ctx, tracing.SpanTypeAgentRound, "")
+        defer roundSpan.End()
+        roundSpan.SetTag("round.index", round)
+        roundSpan.SetTag("round.messages_count", len(a.GetMessages()))
+
+        // ... 原有循环体逻辑，把 ctx 替换为 roundCtx 传给下游
+        // 注意：goroutine 中使用 roundCtx，不要泄漏到下轮
+
+        return !shouldEnd.Load()
+    }()
+    if !shouldContinue {
+        close(eventCh)
+        return
+    }
+}
+```
+
+**TOOL_CALL（`InvokeToolCalls` for 循环体，`base.go:111-256`）**：
+
+```go
+for _, toolCall := range toolCalls {
+    func() {
+        toolCtx, toolSpan := tracing.StartSpanFromContext(ctx, tracing.SpanTypeToolCall, toolCall.Name)
+        defer toolSpan.End()
+        // 若识别为子智能体（tool 类型是 SubagentTool），把 SpanType 改成 SUBAGENT_CALL
+        // 由于 SpanType 在 Start 时就已固定，这里的做法是：
+        //   在 Start 前先探测 tool 类型，选择合适的 SpanType 传入
+        //   （见下方"SpanType 动态选择"补丁）
+
+        toolSpan.SetTag("tool.name", toolCall.Name)
+        toolSpan.SetTag("tool.tool_call_id", toolCall.ID)
+        // ... 其余 tags / logs 见 4.3 节
+        _ = toolCtx // 若下游需要传 ctx（当前 InvokeTool 无 ctx 参数，本期不改）
+    }()
+}
+```
+
+**SpanType 动态选择**（TOOL_CALL vs SUBAGENT_CALL）：
+
+```go
+// 在 Start 之前决定 SpanType
+spanType := tracing.SpanTypeToolCall
+if tool := a.GetTool(toolCall.Name); tool != nil {
+    if _, ok := tool.(*tools.SubagentTool); ok {
+        spanType = tracing.SpanTypeSubagentCall
+    }
+}
+toolCtx, toolSpan := tracing.StartSpanFromContext(ctx, spanType, toolCall.Name)
+```
+
+**关键约束**：
+- 循环内 ctx 一律用**新变量名**（`roundCtx` / `toolCtx`），**不要**用 `ctx, span := ...` 覆盖外层
+- `AGENT_ROUND` 的 parent 永远是 root（因为使用外层 `ctx`）
+- 循环外的 ctx 保持指向 root（下轮再次从 root 派生 AGENT_ROUND）
+
+#### 4.1.2 需要新增 ctx 参数的函数签名（本期改造清单）
+
+| 函数 | 现签名 | 目标签名 | 原因 |
+|------|--------|----------|------|
+| `BaseAgent.StreamingInvokeLLM` | `(messages []llm.Message, eventCh chan<- events.AgentEvent) llm.Message` | `(ctx context.Context, messages []llm.Message, eventCh chan<- events.AgentEvent) llm.Message` | 内部创建 LLM_CALL span 需要 parent ctx |
+| `BaseAgent.InvokeLLM` | `(messages []llm.Message) (llm.Message, error)` | `(ctx context.Context, messages []llm.Message) (llm.Message, error)` | 同上（非流式路径） |
+
+**调用点同步改造**：`Invoke` / `StreamingInvoke` 循环内调用这两个函数时传入 `roundCtx`。
+
+**`InvokeTool` / `InvokeToolCalls`**：`InvokeToolCalls` 已收 ctx；`InvokeTool` 本期**不改签名**（工具执行是三方 tool 内部行为，本期不下钻埋点）。TOOL_CALL span 完全在 `InvokeToolCalls` 循环体内闭环。
 
 ### 4.2 调用序列示例
 
@@ -418,18 +510,50 @@ tN    []                                     root.End() → span_id=0 提交
 
 #### AGENT_ROOT
 
-**独立列**：`ConversationID`、`AgentName`
-**Tags**：
-- `agent.name`
-- `agent.max_iterations`
-- `agent.model`
-- `agent.tools_count`
-- `user.query`（截断到 1KB，敏感字段打码）
-- `system_prompt.hash`（sha256，前 16 字符）
+**独立列**（在 `StartRootSpan` 时由 Application 层填入，因为 Application 层持有 `ChatRequest`）：
+- `ConversationID`（来自 `request.ConversationId`）
+- `AgentName`（本期先填空串或用 `"base"` 占位；若 Application 层未来能拿到 agent name 再补齐——见下方**采集责任分工**）
+
+**Tags 采集责任分工**（关键澄清）：
+
+Application 层持有的信息：
+- `user.query`（来自 `request.Query`，截断到 1KB，敏感字段打码）
+- `agent.max_iterations`（来自 `request.MaxIterations`；若不存在则从 domain 层补）
+- 独立列 `ConversationID`
+
+Domain 层（`BaseAgent.StreamingInvoke` / `Invoke` 入口）持有的信息：
+- `agent.name`（`a.name`）
+- `agent.model`（`a.agentConfig.Model`）
+- `agent.max_iterations`（`a.agentConfig.MaxIterations`，Application 层若未设置则由此处覆盖）
+- `agent.tools_count`（`len(a.GetAvailableTools())`）
+- `system_prompt.hash`（`sha256(a.systemPrompt)[:16]`）
+- 独立列 `AgentName`（用 `a.name` 覆盖 Application 层占位值）
+
+**Domain 层如何补 tag 到 root**：在 `BaseAgent.StreamingInvoke` 和 `Invoke` 入口处，用 `tracing.SpanFromContext(ctx)` 从 ctx 取出 Application 层已创建的 AGENT_ROOT，直接 `SetTag` / `SetAgentName` 补齐 domain 层特有字段。示例：
+
+```go
+func (a *BaseAgent) StreamingInvoke(ctx context.Context, query string, eventCh chan events.AgentEvent) {
+    // === tracing: 补齐 root span 的 domain 层 tags ===
+    rootSpan := tracing.SpanFromContext(ctx)
+    rootSpan.SetTag("agent.name", a.name)
+    rootSpan.SetTag("agent.model", a.agentConfig.Model)
+    rootSpan.SetTag("agent.max_iterations", a.agentConfig.MaxIterations)
+    rootSpan.SetTag("agent.tools_count", len(a.GetAvailableTools()))
+    rootSpan.SetTag("system_prompt.hash", tracing.Sha256Prefix(a.systemPrompt, 16))
+    rootSpan.SetAgentName(a.name)  // 覆盖 Application 层占位值到独立列
+    // ================================================
+
+    // ... 原有逻辑
+}
+```
+
+- `tracing.SpanFromContext(ctx)` 若 ctx 无 span 返回 no-op Span，业务不 panic
+- `Span.SetAgentName(name string)` 提供只读列的写入（AgentName 是独立列不在 tags 里）
+- 无需在 `BaseAgentDomainService` 接口增加新方法，Domain 层实现自补 tag
 
 **Logs**（里程碑）：
-- `agent.context_cancelled`（ctx 被 cancel 时）
-- `agent.max_iterations_exceeded`（超过阈值时，同时 `SetError`）
+- `agent.context_cancelled`（ctx 被 cancel 时，Application 层在 60s 超时兜底路径 + Domain 层在 select `<-ctx.Done()` 分支中记录）
+- `agent.max_iterations_exceeded`（超过阈值时，Domain 层记录，同时 `SetError`）
 
 #### AGENT_ROUND
 
@@ -456,6 +580,44 @@ tN    []                                     root.End() → span_id=0 提交
 - `llm.stream.first_token`
 - `llm.stream.completed`
 - `llm.error`（异常时 `SetError`）
+
+**span 创建位置与 log 采集时机**（关键澄清）：
+
+`StreamingInvokeLLM` **函数签名需新增 `ctx context.Context`**（见 4.1.2）。span 在**函数体内**创建，`defer llmSpan.End()` 保证 goroutine 内的落地时序正确：
+
+```go
+func (a *BaseAgent) StreamingInvokeLLM(ctx context.Context, messages []llm.Message, eventCh chan<- events.AgentEvent) llm.Message {
+    _, llmSpan := tracing.StartSpanFromContext(ctx, tracing.SpanTypeLLMCall, "")
+    defer llmSpan.End()
+    llmSpan.SetTag("llm.model", a.agentConfig.Model)
+    llmSpan.SetTag("llm.messages_count", len(a.GetMessages()))
+    llmSpan.SetTag("llm.tools_count", len(a.GetAvailableTools()))
+    llmSpan.AddLog("INFO", "llm.request.sent", nil)
+
+    // ... 原有 go func { invoker.StreamingInvoke(...) } 逻辑
+
+    // 在 event 转发循环中根据事件类型 AddLog：
+    firstTokenSeen := false
+    for event := range llmEventCh {
+        if !firstTokenSeen && event.EventType() == events.EventTypeMessage {
+            llmSpan.AddLog("INFO", "llm.stream.first_token", nil)
+            firstTokenSeen = true
+        }
+        eventCh <- event
+    }
+    wg.Wait()
+
+    llmSpan.SetTag("llm.finish_reason", deriveFinishReason(message))
+    llmSpan.SetTag("llm.tool_calls_count", len(message.ToolCalls))
+    llmSpan.AddLog("INFO", "llm.stream.completed", nil)
+    return message
+}
+```
+
+**关键点**：
+- span 的生命周期与函数一致（`defer llmSpan.End()`），不跨 goroutine 传 span 引用
+- 所有 log 采集都在**外层监听 goroutine**（`for event := range llmEventCh`）内完成，避免与 invoker goroutine 竞态；`Span.AddLog` 内部有 `mu` 保护，即便未来跨 goroutine 也安全
+- 非流式路径 `InvokeLLM` 同理：函数入口 Start、`defer End`、重试循环内 log `llm.retry` + `SetError`
 
 #### TOOL_BATCH
 
@@ -584,6 +746,7 @@ tN    []                                     root.End() → span_id=0 提交
 
 - `root` 单节点入口，每层 `children` 按 `span_id ASC` 排序
 - 顶层元信息（`conversation_id` / `agent_name` / `duration_ms` / `is_error` / `span_count`）由 Application Service 从 root span + 全表聚合派生
+- **顶层 `is_error` 语义**（关键澄清）：由于 5.2 明确"错误不冒泡"，`root` 节点自身 `is_error` 可能为 false，但 trace 内叶子 span 可能有错误。**顶层 `is_error` 定义为**：`该 trace 内任意 span.is_error = true`。计算方式：SQL 聚合 `SUM(is_error) > 0`；或在 Application 层遍历树时短路计算。前端展示"红色 trace"标记依赖此顶层字段，与 `root.is_error` 语义有意分离
 
 ### 6.2 扁平 → 树的构建算法
 
@@ -725,9 +888,10 @@ func BuildSpanTree(nodes []*SpanNode) (*SpanNode, error) {
 
 ### 7.5 Tracing 自身开销
 
-- SetTag / AddLog：O(1) map 写入 + 敏感字段正则匹配（编译一次的 `sync.Once` 保护）
-- Span.End：一次 channel 非阻塞发送 + 计算 latency
-- 埋点整体 CPU 开销预计 < 1%（无 profiling 数据前的经验估算）
+- `SetTag` / `AddLog`：O(1) map 写入 + 敏感字段正则匹配（编译一次的 `sync.Once` 保护）
+- `Span.End`：一次 channel 非阻塞发送 + 计算 latency
+- **实施后需 profiling 验证**：目标"埋点新增开销不超过原 Chat 端到端时延的 5%"；e2e 阶段做前后对比压测（详见配套 plan 文档的验证章节）
+- 若 profiling 结果不达标，需调整方向：减少 tags 数、增大 flush 批 / 缓冲区、缓冲区改为无锁 ring buffer 等
 
 ---
 
@@ -799,6 +963,15 @@ func BuildSpanTree(nodes []*SpanNode) (*SpanNode, error) {
 
 6. `TestChat_SubagentCall_SpanType`：子智能体 tool
    - span_type=`SUBAGENT_CALL` + `subagent.name` tag 存在
+
+7. `TestChat_TracerBufferFull_BusinessUnaffected`：把 Tracer 缓冲区容量调到 1、禁用 flush（`flushInterval=1h`）
+   - 跑一个 8-span 的 chat，期望 7 条被 drop
+   - **断言 Chat 正常返回、事件流完整、`dropCounter >= 7`**
+   - 证明业务链路完全不受 tracing 拥塞影响
+
+8. `TestChat_LoopContextPropagation_RoundParentIsRoot`：mock 2 轮 ReAct
+   - 断言两个 AGENT_ROUND 的 `parent_span_id` 都等于 root 的 `span_id`（= 0）
+   - 防止"轮次埋点 ctx 误覆盖"回归
 
 ### 8.4 Repository 测试
 
