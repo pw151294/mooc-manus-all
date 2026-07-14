@@ -544,36 +544,22 @@ cd mooc-manus && go test ./internal/domains/models/tracing/ -run "TestSpanFromCo
 
 - [ ] **Step 1.2.3：实现 `noop.go`**
 
-```go
-// mooc-manus/internal/domains/models/tracing/noop.go
-package tracing
-
-// noopSpan 是所有方法都空实现的 Span。
-// 当 ctx 无 parent、tracer 未初始化时返回，避免业务方 nil 判断。
-// 注意：所有 Span.XXX 方法都要处理 s == nil 或空 Span 的 case。
-var noopSingleton = &Span{
-    ended: func() (b atomicBool) { b.Store(true); return }(),
-}
-
-// 用一个类型别名规避 atomic.Bool 无零值构造的问题
-type atomicBool struct{ v atomicBoolInner }
-
-// 直接用 sync/atomic Bool 的零值即可，无需别名——为清晰起见保持默认。
-```
-
-**说明**：上面示意有点绕。**实际实现更简单**：`noopSingleton` 就用零值 `&Span{}` 即可（`SetTag` / `AddLog` 已加 nil 判断和空 map 判断，`End` 靠 `ended.CompareAndSwap` 幂等），无需自定义 atomicBool。删掉上面这段，改用：
+`newNoopSpan()` 用于 ctx 无 parent 或 tracer 未初始化时返回，保证所有 `Span.*` 方法可无害调用。依赖 `span.go` 已实现的三件事：
+1. `SetTag` / `AddLog` 对空 `tags` 做惰性初始化
+2. `End()` 通过 `ended.CompareAndSwap(false, true)` 幂等，且当 `commitFn == nil` 时不 commit
+3. `SetError` / `SetAgentName` / `SetConversationID` 内部 `s == nil` / 空对象兼容
 
 ```go
 // mooc-manus/internal/domains/models/tracing/noop.go
 package tracing
 
-// noopSpan 用于 ctx 无 parent 或 tracer 未初始化时返回
-// 所有方法可无害调用；End 因 ended 已 true 而直接返回
+// newNoopSpan 用于 ctx 无 parent 或 tracer 未初始化时返回
+// 所有 Span 方法可无害调用；End 因 ended=true 直接返回，不会 commit
 func newNoopSpan() *Span {
     s := &Span{
         tags: map[string]interface{}{},
     }
-    s.ended.Store(true) // 直接标记 ended=true，避免误 commit
+    s.ended.Store(true) // 提前标记 ended，避免误 commit
     return s
 }
 ```
@@ -1661,6 +1647,10 @@ git commit -m "feat(tracing): Application.Chat 入口埋 AGENT_ROOT + user.query
 
 - [ ] **Step 3.2.1：入口补 root 的 domain 层 tags**
 
+**关键前置**：`internal/domains/models/app_config.go:15` 定义的 `AgentConfig` **不含 Model 字段**（Model 在同文件的 `ModelConfig` 里），且 `BaseAgent`（`base.go:25-38`）**只存 `agentConfig models.AgentConfig`，没存 `ModelConfig`**。若直接写 `a.agentConfig.Model` 编译失败。
+
+**本期直接省略 `agent.model` tag**（YAGNI；若未来需要，独立迭代给 BaseAgent 增 `modelName` 字段 + `WithModelName` option）。
+
 在 `StreamingInvoke` 和 `Invoke` 两个函数入口第一行加：
 
 ```go
@@ -1668,20 +1658,18 @@ func (a *BaseAgent) StreamingInvoke(ctx context.Context, query string, eventCh c
     // === 【tracing 新增】补 root span 的 domain 层 tags ===
     rootSpan := tracing.SpanFromContext(ctx)
     rootSpan.SetTag("agent.name", a.name)
-    rootSpan.SetTag("agent.model", a.agentConfig.Model) // 若字段不存在按现有 config 结构调整
     rootSpan.SetTag("agent.max_iterations", a.agentConfig.MaxIterations)
     rootSpan.SetTag("agent.tools_count", len(a.GetAvailableTools()))
     rootSpan.SetTag("system_prompt.hash", tracing.Sha256Prefix(a.systemPrompt, 16))
     rootSpan.SetAgentName(a.name)
+    // 说明：agent.model 本期不采集（AgentConfig / BaseAgent 均未持有 model 名）
     // ======================================================
 
     // ... 原有逻辑
 }
 ```
 
-**注意**：`agent.model` 字段：项目 `AgentConfig`（domain）无 Model 字段（Model 在 ModelConfig 里），故这一行改为 `rootSpan.SetTag("agent.model_config_ref", "app_config")` 或省略；实施时先 grep `a.agentConfig` 用到的字段以对齐。
-
-对 `Invoke` 同步加同一段。
+对 `Invoke`（非流式）同步加同一段。
 
 - [ ] **Step 3.2.2：`StreamingInvoke` 循环体用匿名函数包裹**
 
@@ -1746,13 +1734,52 @@ for round < a.agentConfig.MaxIterations {
 
 对 `base.go:409-454` 的 `Invoke`（非流式）做对称处理：把 `for round < ...` 循环体包进匿名函数，roundCtx 隔离。
 
-- [ ] **Step 3.2.4：编译验证**
+- [ ] **Step 3.2.4：埋 `agent.context_cancelled` 里程碑 log**
+
+在 `StreamingInvoke` 和 `Invoke` 的 `<-ctx.Done()` 分支内，**在 `eventCh <- events.OnError("对话已被中止")` 之前** 追加：
+
+```go
+case <-ctx.Done():
+    // === 【tracing】记录 context cancel 里程碑 ===
+    rootSpan := tracing.SpanFromContext(ctx)
+    rootSpan.AddLog("WARN", "agent.context_cancelled", map[string]interface{}{
+        "round": round,
+        "err":   ctx.Err().Error(),
+    })
+    // ================================================
+    logger.Info("StreamingInvoke cancelled by context", zap.Error(ctx.Err()), zap.Int("round", round))
+    eventCh <- events.OnError("对话已被中止")
+    close(eventCh)
+    return
+```
+
+`Invoke` 的对应 `<-ctx.Done()` 分支（`base.go:427` 附近）同样处理。
+
+- [ ] **Step 3.2.5：埋 `agent.max_iterations_exceeded` 里程碑 log + SetError**
+
+在 `StreamingInvoke` 和 `Invoke` 的**循环结束后**（`eventCh <- events.OnError(fmt.Sprintf("智能体思考轮次超过阈值：%d", ...))` 之前）追加：
+
+```go
+// === 【tracing】记录 max iterations 里程碑 + 标错 ===
+rootSpan := tracing.SpanFromContext(ctx)
+rootSpan.AddLog("ERROR", "agent.max_iterations_exceeded", map[string]interface{}{
+    "max_iterations": a.agentConfig.MaxIterations,
+})
+rootSpan.SetError(fmt.Errorf("智能体思考轮次超过阈值：%d", a.agentConfig.MaxIterations))
+// ================================================
+eventCh <- events.OnError(fmt.Sprintf("智能体思考轮次超过阈值：%d", a.agentConfig.MaxIterations))
+close(eventCh)
+```
+
+**注意**：`SetError` 会同时设置 `IsError=true`。虽然错误"不冒泡"到子 span，但 root 自身失败要标红——这是与"不冒泡"策略一致的（root 自身也是当事人 span）。
+
+- [ ] **Step 3.2.6：编译验证**
 
 ```bash
 cd mooc-manus && go build ./...
 ```
 
-- [ ] **Step 3.2.5：Commit**
+- [ ] **Step 3.2.7：Commit**
 
 ```bash
 git add mooc-manus/internal/domains/services/agents/base.go
@@ -1804,10 +1831,11 @@ func (a *BaseAgent) StreamingInvokeLLM(ctx context.Context, messages []llm.Messa
         eventCh <- event
     }
     wg.Wait()
-    close(eventCh)
 
+    // 先记录 tag/log 再 close，避免在关闭后被认为"消息已完结"
     llmSpan.SetTag("llm.tool_calls_count", len(message.ToolCalls))
     llmSpan.AddLog("INFO", "llm.stream.completed", nil)
+    close(eventCh)
     return message
 }
 
@@ -2361,23 +2389,45 @@ func TestTraceHandler_List_200(t *testing.T) {
 
 导入新包：`"mooc-manus/internal/domains/models/tracing"`。
 
-- [ ] **Step 4.3.4：Tracer graceful shutdown**
+- [ ] **Step 4.3.4：Tracer graceful shutdown（必做）**
 
 **Files:** `mooc-manus/main.go`
 
-在 gin server graceful shutdown 段（若已有 `signal.Notify(SIGTERM)` 处理），追加：
+**必须落地**（不做遗留）：若 `main.go` 目前没有 graceful shutdown，本 Task 一并加上——否则进程 kill 时 tracer 缓冲区丢失，测试也无法验证 flush 路径。
+
+先阅读 `mooc-manus/main.go` 现状；若没有 `signal.Notify` 优雅退出逻辑，追加：
 
 ```go
+// main.go 末尾（Router.Run 前改造成 http.Server 显式启动 + Shutdown）
+srv := &http.Server{Addr: ":8080", Handler: r}
+go func() {
+    if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+        logger.Fatal("http server error", zap.Error(err))
+    }
+}()
+
+quit := make(chan os.Signal, 1)
+signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+<-quit
+logger.Info("shutting down...")
+
+shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+
+// 先关 http 停接收新请求
+if err := srv.Shutdown(shutdownCtx); err != nil {
+    logger.Warn("http server shutdown err", zap.Error(err))
+}
+
+// 再 flush tracer
 if t := tracing.Global(); t != nil {
-    shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-    defer cancel()
     if err := t.Shutdown(shutdownCtx); err != nil {
         logger.Warn("tracer shutdown timeout", zap.Error(err))
     }
 }
 ```
 
-若 `main.go` 未做 graceful shutdown，则跳过此步（Tracer 靠 defer 结构在正常路径已经能 flush；进程 kill 时会丢缓冲）。**遗留项**：main.go graceful shutdown 建议后续独立迭代。
+若 `main.go` 已经有 graceful shutdown，仅追加 `tracing.Global().Shutdown(...)` 调用（放在 http server Shutdown 之后，让 in-flight 请求先 End 各自 span）。
 
 - [ ] **Step 4.3.5：编译 + 测试**
 
@@ -2798,9 +2848,8 @@ curl "http://localhost:8080/api/traces?is_error=true&page=1&page_size=10"
 **遗留项**（后续独立迭代）：
 
 1. 前端可视化瀑布图
-2. `main.go` graceful shutdown（若未在本期落地）
-3. PlanAgent / A2AAgent 埋点覆盖
-4. 分区 / 归档策略
-5. OTel 协议兼容
-6. token 用量硬性上报（依赖 invoker.Invoker 接口暴露 usage 字段）
+2. PlanAgent / A2AAgent 埋点覆盖
+3. 分区 / 归档策略
+4. OTel 协议兼容
+5. token 用量硬性上报（依赖 invoker.Invoker 接口暴露 usage 字段）
 
