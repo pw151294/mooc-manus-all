@@ -1,0 +1,14 @@
+{
+  "name": "mooc-manus-subagent-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:c1": "playwright test specs/c1.plan-off.spec.ts",
+    "test:c3": "playwright test specs/c3.plan-on-subagent-on.spec.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^20.0.0"
+  }
+}
