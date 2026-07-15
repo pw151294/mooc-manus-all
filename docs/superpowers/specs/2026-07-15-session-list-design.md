@@ -145,7 +145,7 @@ const [selectedSpanId, setSelectedSpanId] = useState<number | null>(null);
 const [colorMode, setColorMode] = useState<'type' | 'heat'>('type');
 ```
 
-- Modal `open` 变 `true` 时，`useEffect` 调用 `getTraceDetail(traceId)`；返回后设置 `detail`，同时**默认选中 root span**（`selectedSpanId = 0`）以便下方面板立即有内容
+- Modal `open` 变 `true` 时，`useEffect` 调用 `getTraceDetail(traceId)`；返回后设置 `detail`，同时**默认选中 root span**（`selectedSpanId = detail.root.span_id`，不硬编码 `0`，避免后端未来改 root 编号导致失效）以便下方面板立即有内容
 - Modal 关闭时清空所有局部状态；下次打开重新拉（不缓存）
 - HTTP 404 → `error='not_found'`；HTTP 5xx → `error='server'`；渲染时对应显示 `<Result>` 组件
 
@@ -176,7 +176,7 @@ const [colorMode, setColorMode] = useState<'type' | 'heat'>('type');
        ↓
   detail 状态就绪 → 上下分栏渲染：
     - FlameGraph 拿 detail.root 布局
-    - SpanDetailPanel 拿 findSpanById(detail.root, selectedSpanId=0) 渲染
+    - SpanDetailPanel 拿 findSpanById(detail.root, selectedSpanId=detail.root.span_id) 渲染
        ↓
   用户点火焰图某 span → onSpanClick(span) → setSelectedSpanId(span.span_id)
        ↓
@@ -184,14 +184,33 @@ const [colorMode, setColorMode] = useState<'type' | 'heat'>('type');
 
 [关闭]
   用户按 ESC / 点关闭 → Modal onCancel → 父组件 setState({modalTraceId: null})
-  → Modal destroyOnClose 卸载子组件 → useEffect cleanup 里 abort 未完成的 fetch
+  → Modal destroyOnHidden 卸载子组件 → useEffect cleanup 里 abort 未完成的 fetch
 ```
 
 ### 3.5 并发与竞态
 
-- **列表页 fetchTraces**：用户快速切页或反复点查询时，若前一请求未回来又发起新请求，后端返回顺序可能倒挂。用 `AbortController`——`store.fetchTraces` 每次调用先 abort 上一个 in-flight 请求（在 store 内维护一个 `abortRef`）
-- **详情弹窗 getTraceDetail**：Modal 关闭时 abort 未完成的请求，防止 setState on unmounted component
-- 分页参数校验：`page < 1` 视为 1；`pageSize` 允许 `[10, 20, 50, 100]` 四档，超范围强制 20（对齐后端 `pageSize > 100` 强制 20 的行为）
+- **列表页 fetchTraces**：用户快速切页或反复点查询时，若前一请求未回来又发起新请求，后端返回顺序可能倒挂。用 `AbortController`——`store.fetchTraces` 每次调用先 abort 上一个 in-flight 请求。**实现位置**：`store/trace.ts` 模块级 `let inflight: AbortController | null = null`（不进 Zustand state，避免触发订阅者无谓重渲染；命名为 `inflight` 而非 `abortRef` 以免误导为 React ref）
+- **详情弹窗 getTraceDetail**：Modal 关闭时 abort 未完成的请求，防止 setState on unmounted component。`AbortController` 挂在 `TraceDetailModal.tsx` 组件内 `useRef<AbortController | null>(null)`
+- 分页参数校验：`page < 1` 视为 1；`pageSize < 1 || > 100` 强制 20（对齐后端 `services/trace.go:87-89` 的行为）；AntD Pagination 只允许在 `pageSizeOptions=['10','20','50','100']` 里挑，理论上不会超范围，冗余但无害
+
+### 3.5.1 "查询"按钮的组合动作原子性
+
+**背景**：查询按钮同时要更新 filters 与重置 page 到 1，但 `setFilters` 不 fetch、`setPage` 会 fetch。若先 `setPage(1)` 再 `setFilters(patch)`，`setPage` 触发的 fetch 会用旧 filters 请求；若先 `setFilters` 再 `setPage(1)`，`setFilters` 已同步更新 state，`setPage` 的 fetch 才用新 filters —— 但仍会有一次多余的、如果 page 已经是 1 的 no-op fetch。
+
+**处理**：store 里提供合并 action `applyFiltersAndFetch(patch: Partial<TraceListFilters>)`：内部先 `set({ filters: {...current, ...patch}, page: 1 })`，再显式调用 `fetchTraces()`。查询按钮统一调用此 action，避免 setFilters + setPage 组合出错。
+
+### 3.5.2 TraceFilters 临时状态与 store filters 同步时机
+
+**约定**：TraceFilters 组件内部用 `useState` 维护一组"未提交"的临时值（`localFilters`）；同步策略：
+
+| 触发 | 行为 |
+|---|---|
+| 组件挂载 | `localFilters` 初始化为 `store.filters` 当前值 |
+| 用户输入/修改控件 | 只更新 `localFilters`，不动 store |
+| 点"查询" | `store.applyFiltersAndFetch(localFilters)` |
+| 点"重置" | `store.resetFilters()`；同时 `setLocalFilters(defaultFilters)`（视觉上输入框立即清空） |
+| store.filters 外部变化（罕见，如另一个组件触发） | `useEffect(() => setLocalFilters(store.filters), [store.filters])` 同步下来 |
+| 输入框 Enter | 等价于点"查询"
 
 ### 3.6 空态 & 错误态
 
@@ -264,7 +283,7 @@ const [colorMode, setColorMode] = useState<'type' | 'heat'>('type');
 
 - `onRow={(row) => ({ onClick: () => setModalTraceId(row.trace_id) })}`
 - 鼠标 hover 全行 `cursor: pointer`
-- `is_error=true` 的行整行浅红色高亮：`rowClassName={(row) => row.is_error ? 'trace-row-error' : ''}`；CSS 定义在 `pages/Trace/index.tsx` 顶部：`.trace-row-error > td { background: #fff2f0 !important; }`
+- `is_error=true` 的行整行浅红色高亮：`rowClassName={(row) => row.is_error ? 'trace-row-error' : ''}`。**CSS 落盘位置**：新增独立 `src/pages/Trace/index.css`，内容 `.trace-row-error > td { background: #fff2f0 !important; }`；在 `pages/Trace/index.tsx` 顶部 `import './index.css';`。理由：既有 `pages/Tool/*.tsx` 无自定义 CSS 先例，此处为独立特性、独立样式文件，避免污染全局 `src/index.css`
 - **默认排序**：依赖后端返回顺序为 `start_time DESC`（e2e 中验证）
 - **rowKey**：`"trace_id"`
 - **size**：`"middle"`（对齐既有页面）
@@ -311,7 +330,7 @@ export default function TracePage() {
 
 ```
 ┌─ Modal（title="链路详情" + trace_id 徽章 + 复制按钮） ────────────────┐
-│ 90vw × 85vh, footer=null, destroyOnClose                             │
+│ 90vw × 85vh, footer=null, destroyOnHidden                            │
 │ ┌─ 顶部元信息条（固定高度 48px） ─────────────────────────────────┐ │
 │ │ trace_id: ... (复制) │ conversation_id: ... │ agent: ...          │ │
 │ │ 开始时间: ... │ 耗时: 1.23s │ span 数: 42 │ 状态: ❌ 失败          │ │
@@ -327,7 +346,7 @@ export default function TracePage() {
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-- Modal props：`width="90vw"`, `styles={{ body: { height: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' } }}`, `footer={null}`, `destroyOnClose`
+- Modal props：`width="90vw"`, `styles={{ body: { height: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' } }}`, `footer={null}`, `destroyOnHidden`（AntD 6.4.5 使用 `destroyOnHidden` 替代已废弃的 `destroyOnClose`；已通过 `node_modules/antd/lib/modal/interface.d.ts` 核实）
 - 上下两栏用 CSS `flex: 4` / `flex: 6` 分配剩余高度
 - 顶部元信息条：加载中显示 `<Spin size="large" />` 占位
 - 右上"颜色模式切换"：`<Radio.Group value={colorMode} onChange size="small">` 两选一
@@ -384,18 +403,19 @@ interface FlameGraphProps {
 - **悬浮**：矩形 `onMouseEnter` 更新 `hoverSpan` 状态；用绝对定位浮层显示 tooltip（AntD Tooltip 在 SVG 元素上表现不佳），跟随 `mousemove` 更新位置：
   ```
   AGENT_ROUND · round.iterate
-  耗时: 1.23s
-  起始: +0ms
+  耗时: formatDuration(span.latency_ms)
+  起始: +formatDuration((span.start_time - root.start_time) / 1_000_000)
   Span ID: 5, Parent: 0
-  [有错误]
+  [有错误]  [孤儿]
   ```
+  起始偏移的计算：`(span.start_time - root.start_time) / 1_000_000` 得到毫秒数，再 `formatDuration` 格式化
 - **点击**：矩形 `onClick={() => onSpanClick(span)}`；选中矩形加 `stroke="#000" stroke-width="2"` 内描边
 - **点击空白区域**：不清空选中（保持当前 span 详情可见）
 
 **性能与响应式**：
 
 - 单次会话典型 span 数 20-100（≤500），SVG 直接渲染无压力，不需要 canvas 或虚拟化
-- 首次渲染在 `useLayoutEffect` 里读取容器 `clientWidth`；监听 `ResizeObserver` 在窗口/Modal 尺寸变化时重算布局
+- 首次渲染在 `useLayoutEffect` 里读取容器 `clientWidth`；监听 `ResizeObserver` 在窗口/Modal 尺寸变化时重算布局。**挂载点**：`FlameGraph` 组件自身根 `<div ref={containerRef}>`（不监听 Modal `.ant-modal-body`，避免耦合父组件 DOM 结构）
 
 **无障碍**：
 
@@ -433,13 +453,13 @@ interface SpanDetailPanelProps {
 
 - **实现方式**：`utils.ts` 里一个 `SPAN_TYPE_TAG_MAP: Record<SpanType, string[]>`，`SpanDetailPanel` 按顺序遍历，`span.tags[key]` 有值就渲染一行；无值跳过
 - **未在映射表里的其他 tags** 不在概要 Tab 展示（避免噪声），完整版去"完整 Tags" Tab
-- **长值折叠**：单个 tag value 是字符串且长度 > 500 时用 `<Typography.Paragraph ellipsis={{ rows: 3, expandable: true, symbol: '展开' }}>`；对象类型用 `<pre>` 显示 `JSON.stringify(value, null, 2)`
+- **长值折叠**（统一策略，与 Tab 2 一致）：单个 tag value 是字符串且长度 > 500 时用 `<Typography.Paragraph ellipsis={{ rows: 3, expandable: true, symbol: '展开' }}>`（AntD `Paragraph.ellipsis.expandable` 展开后自动切换为可再次折叠状态，具体表现以 AntD 6.4.5 实际行为为准）；对象类型用 `<pre>` 显示 `JSON.stringify(value, null, 2)`
 
 #### Tab 2：完整 Tags
 
 - `<Descriptions column={1} bordered size="small">` 展示 `span.tags` 的**所有键值对**，按 key 字母序排序
 - value 按类型渲染：
-  - `string` → `<Typography.Text copyable ellipsis={{ rows: 2, expandable: true, symbol: '展开' }}>`
+  - `string` → `<Typography.Paragraph copyable ellipsis={{ rows: 3, expandable: true, symbol: '展开' }}>`（与 Tab 1 概要区保持 `rows: 3` 统一，避免两个 Tab 的折叠阈值不一致造成 UX 割裂）
   - `number/boolean` → 直接 `String(v)`
   - `object/array` → `<pre style={{ maxHeight: 200, overflow: 'auto' }}>{JSON.stringify(v, null, 2)}</pre>` + 复制按钮
 - **敏感字段处理**：value === `"***"` 时加 `<Tag color="warning">已打码</Tag>`（后端已打码，前端仅视觉标注）
@@ -464,24 +484,37 @@ interface SpanDetailPanelProps {
 ```ts
 export function formatDuration(ms: number): string;                                        // 123ms / 1.23s / 1.23min
 export function formatTimestamp(ns: number): string;                                       // 'YYYY-MM-DD HH:mm:ss.SSS' 本地时区
+export function relativeOffsetMs(span: SpanNode, root: SpanNode): number;                  // (span.start_time - root.start_time) / 1_000_000
 export function colorFor(span: SpanNode, mode: 'type' | 'heat', rootLatency: number): string;
 export function flattenLayout(root: SpanNode, width: number): FlameRect[];                 // 布局主函数
 export function findSpanById(root: SpanNode, id: number): SpanNode | null;                 // selectedSpan lookup
+export function isOrphan(span: SpanNode): boolean;                                          // span.tags?._orphan === true
 export const SPAN_TYPE_TAG_MAP: Record<string, string[]>;
 export const SPAN_TYPE_COLOR: Record<string, string>;
+```
+
+**`getTraceDetailSafe` 类型声明**（放在 `api/modules/trace.ts`）：
+
+```ts
+export type GetTraceDetailResult =
+  | { ok: true; data: TraceDetailDTO }
+  | { ok: false; status: 404 | 500 | 'network' };
+export async function getTraceDetailSafe(traceId: string, signal?: AbortSignal): Promise<GetTraceDetailResult>;
 ```
 
 - **`flattenLayout` 是核心**：递归遍历树，返回按渲染顺序（root 先，DFS 前序）的 `FlameRect[]`，保证 React `.map` 的 z-order 稳定
 
 ---
 
-## 六、错误处理矩阵
+## 六、错误处理
+
+### 6.1 错误处理矩阵
 
 | 场景 | 后端表现 | 前端处理 | 用户可见 |
 |---|---|---|---|
-| `/api/traces` 参数错误 | `400 { code:"INVALID_PARAM", message }` | 拦截器 `message.error(data.message ?? "请求参数错误")` | AntD 顶部红色 toast，表格保留上一次数据 |
+| `/api/traces` 参数错误 | `400 { code:"INVALID_PARAM", message }` | 拦截器兜底 toast + 列表页 `fetchTraces` catch 读 `data?.message ?? data?.error` 二次 toast 覆盖，见 §6.5 | AntD 顶部红色 toast，表格保留上一次数据 |
 | `/api/traces` 网络失败 | 无响应 | 拦截器 `message.error("网络连接失败")` | 顶部红色 toast |
-| `/api/traces` 5xx | `500 { code:"INTERNAL_ERROR" }` | 拦截器 `message.error("服务器错误")` | 顶部红色 toast，表格清空 loading |
+| `/api/traces` 5xx | `500 { code:"INTERNAL_ERROR" }` | 拦截器兜底 toast + 列表页 catch 读 `data?.message ?? data?.error` 二次 toast 覆盖 | 顶部红色 toast，表格清空 loading |
 | `/api/traces` 空结果 | `200 { total:0, traces:[] }` | Table 展示内置空态 | "暂无数据" |
 | `/api/traces` 请求竞态 | 慢请求晚到 | `AbortController` 取消上一个 in-flight | 用户只看到最新请求结果 |
 | `/api/trace/:id` 404 | `404 { code:"TRACE_NOT_FOUND" }` | Modal 内 `<Result status="404" title="Trace 不存在">` | 弹窗内明显提示，不弹 toast |
@@ -490,8 +523,54 @@ export const SPAN_TYPE_COLOR: Record<string, string>;
 | Modal 加载中用户关闭 | — | `AbortController.abort()` | 无副作用 |
 | Span 树深度极端（>20） | — | 火焰图纵向 `overflow-y:auto` 滚动 | 弹窗内可滚动 |
 | trace 总时长为 0 | — | 除零保护：`rootDuration = max(dur, 1)`；span `width = 2px 最小值` | 火焰图退化为等宽条 |
+| 孤儿 span（`tags._orphan=true`） | 后端已挂到 root 下 | 火焰图虚线边框 + 概要 Tab 顶部 `<Alert type="warning">` 显示 `_original_parent` | 用户可见"父 Span ID 已丢失"提示 |
+| `is_error=true` 但 logs 为空 | 后端可能只在 `tags["error.message"]` 有错误信息 | 概要 Tab 顶部 `<Alert type="error">` 显示 `tags["error.message"]`；若无 tag 则显示兜底文案 | 用户不会因 Logs 为空看不到错误原因 |
 
-**局部拦截器豁免**：`getTraceDetail` 内部通过 `{ validateStatus: () => true }` 或 try/catch 包装，避免 `request.ts` 拦截器对 404 也弹 toast（用户已看到 Modal 内 Result 组件，toast 是多余的）。具体做法：包装一层 `getTraceDetailSafe` 函数，返回结构化结果 `{ ok: boolean, data?, status? }`。
+### 6.2 局部拦截器豁免
+
+**局部拦截器豁免**：`getTraceDetail` 内部通过 `{ validateStatus: () => true }` 或 try/catch 包装，避免 `request.ts` 拦截器对 404 也弹 toast（用户已看到 Modal 内 Result 组件，toast 是多余的）。具体做法：包装一层 `getTraceDetailSafe` 函数，返回结构化结果 `{ ok: boolean, data?, status? }`（类型显式声明在 `api/modules/trace.ts` 内）。
+
+### 6.3 5xx 重试按钮行为
+
+重试 = 重新调用 `getTraceDetail(traceId)`，**不重置** `colorMode` 与 `selectedSpanId`（用户已有的偏好保持）。
+
+### 6.4 拦截器错误消息字段名兼容
+
+**背景**：`request.ts:57-77` 现读取 `error.response.data?.error`，但后端 `handlers/trace.go:27,46` 返回体是 `{code, message}`（字段名 `message`）。当前拦截器永远拿不到后端的具体文案，用户看到的都是兜底文案。
+
+**处理**：本设计不改 `request.ts`（避免影响其他模块，且当前项目其他 handler 是否统一字段名待另行梳理）。改由：
+
+- **列表页 `fetchTraces` 处理错误**：`try/catch` 内自行读取 `err.response?.data?.message ?? err.response?.data?.error ?? '查询失败'`，调用 `message.error(...)`，覆盖拦截器已有 toast（AntD `message` 支持连发，用户看到的是最后一条）
+- **详情弹窗 `getTraceDetailSafe`**：不依赖拦截器 toast（已豁免），Modal 内 `<Result>` 组件直接显示错误文案
+
+这样既不破坏既有其他模块，又能拿到后端 message。
+
+### 6.5 命名边界规则（避免 snake_case / camelCase 混用）
+
+**约定**：
+
+- **wire DTO 类型**（`src/types/trace.ts` 中 `TraceSummaryDTO / TraceDetailDTO / SpanNode / LogEntry / TraceListDTO`）：**严格用 snake_case**，字段名与后端 Go json tag 一一对应
+- **Store 状态、组件 props、React 局部 state、URL query params**：**严格用 camelCase**（前端惯例）
+- **转换点**：在 `api/modules/trace.ts` 的请求参数构造处（camelCase → snake_case）、以及 `store/trace.ts` 的 `pageSize = res.page_size` 等赋值处显式转换；wire DTO 数据流经 Table 列渲染时直接读 `row.trace_id / row.is_error / row.user_query_preview`（读 wire 字段名），不做二次包装
+
+### 6.6 孤儿 span 处理
+
+**背景**：`tracing/tree.go:50-58` 里若 span 的 parent 缺失，后端会把它挂到 root 下并在 `tags` 里注入两个标记：`_orphan: true` 和 `_original_parent: <int32>`（原来的 parent span_id）。
+
+**前端处理**：
+
+- **火焰图**：孤儿 span 用**虚线边框**（`stroke-dasharray="4,2"`）取代实线边框，与错误 span 的红色实线边框正交；若同时是孤儿 + 错误，红色 + 虚线
+- **详情面板概要 Tab**：孤儿 span 顶部渲染一条 AntD `<Alert type="warning" message="孤儿节点，父 Span ID 已丢失" description={\`原始 parent_span_id: ${tags._original_parent}\`} />`；`_orphan / _original_parent` 两个 key 在概要 Tab 里不重复展示（避免与 Alert 冗余），但在"完整 Tags"Tab 保留原样
+- **utils.ts** 里加 `isOrphan(span: SpanNode): boolean` 判断函数（`return span.tags?._orphan === true`）
+
+### 6.7 错误 span 顶部醒目展示 error.message
+
+**背景**：`is_error=true` 但 `logs` 数组为空时，Logs Tab 会显示 `<Empty>`，用户看不到实际错误原因。后端可能把错误信息放在 `tags["error.message"]`（约定俗成的 tag key）。
+
+**前端处理**：
+
+- 概要 Tab 中，若 `span.is_error === true` 且 `span.tags["error.message"]` 有值，**在 Descriptions 顶部渲染一条 AntD `<Alert type="error" message="错误信息" description={tags["error.message"]} showIcon />`**
+- 若 `tags["error.message"]` 无值但 `is_error=true`，Alert 显示 description="（后端未提供 error.message，请查看 Logs Tab 或完整 Tags）"
 
 ---
 
@@ -526,6 +605,10 @@ export const SPAN_TYPE_COLOR: Record<string, string>;
 | 23 | Modal 关闭时正在拉数据的 `/api/trace/:id` 请求被 abort |
 | 24 | 详情 404 显示 `<Result status="404">`，5xx 显示带重试按钮的 `<Result status="500">` |
 | 25 | ESC 键关闭 Modal（AntD Modal 默认） |
+| 25.1 | 孤儿 span（`tags._orphan=true`）在火焰图中显示为虚线边框，概要 Tab 顶部有黄色 Alert 提示原 parent |
+| 25.2 | 错误 span（`is_error=true`）概要 Tab 顶部有红色 Alert 显示 `tags["error.message"]`（无 tag 则显示兜底文案） |
+| 25.3 | 快速切换列表行时，Modal 内容用 `key={modalTraceId}` 强制 remount，不会短暂闪现旧 detail |
+| 25.4 | "查询"按钮统一走 `applyFiltersAndFetch` 合并 action，不会先用旧 filters 触发一次多余请求 |
 
 ### 7.2 代码质量层
 
@@ -546,6 +629,8 @@ export const SPAN_TYPE_COLOR: Record<string, string>;
 |---|---|
 | 34 | 前端 `TraceSummaryDTO / TraceDetailDTO / SpanNode / LogEntry` 与后端 Go DTO 字段严格一一对应（含 json tag 名） |
 | 35 | 敏感字段（api_key / token / password / secret / authorization）后端已打码为 `"***"`，前端保证不再解码或转义 |
+| 36 | `getTraceDetailSafe(traceId)` 返回结构化 `GetTraceDetailResult`（`ok:true/data` 或 `ok:false/status`），Modal 依据 status 分别渲染 404/500/network 三种态 |
+| 37 | 命名边界：`src/types/trace.ts` 全部字段 snake_case（对齐后端）；`store/组件 props` 全部 camelCase；转换点在 `api/modules/trace.ts` 与 store 赋值处 |
 
 ---
 
@@ -570,6 +655,8 @@ export const SPAN_TYPE_COLOR: Record<string, string>;
 | 时区显示歧义 | 低 | 一律用浏览器本地时区，Tooltip 里可加 UTC 时区提示（本期不做） |
 | 火焰图矩形宽度精度累计误差 | 极低 | 布局算法浮点计算，最后 `Math.round` 落到像素 |
 | root 时长为 0 时除零 | 低 | `flattenLayout` 内 `Math.max(rootDuration, 1)` 保底 |
+| AntD 6.x API 名与文档不符 | 低 | 已核实 `package.json` 中 `antd@6.4.5`；`destroyOnClose` 已废弃改用 `destroyOnHidden`；`Timeline` 推荐 `items` prop；已在文档同步 |
+| 快速切换列表行时 Modal 保留旧 detail 短暂闪烁 | 低 | Modal `destroyOnHidden` 卸载子组件后再重挂载；父组件 `key={modalTraceId}` 强制 Modal 内容 remount，杜绝旧数据残留 |
 
 ### 8.3 依赖
 
@@ -590,7 +677,30 @@ export const SPAN_TYPE_COLOR: Record<string, string>;
 
 ---
 
-## 十、参考
+## 十、e2e 测试策略（大纲）
+
+**说明**：本节仅列大纲，完整的 e2e 用例文档将在 writing-plans 阶段产出为独立文件 `docs/superpowers/plans/2026-07-15-session-list-e2e.md`（与前置设计 `2026-07-14-agent-tracing-e2e.md` 的形态一致）。
+
+**Fixture 来源**（三选一，按优先级）：
+
+1. **优选**：先跑一次后端 e2e（前置 `agent-tracing` 已有的 `agent_tracing_integration_test.go`）确保 `ai_span` 表有若干真实 trace 数据；前端 e2e 直接连本地 `localhost:8080/api/traces` 拉真实数据
+2. **备选**：在测试前置步骤里手动调用 `/api/agent/chat` 触发若干 trace（含错误/无错误/单 span/多 span 各若干条）作为 fixture
+3. **兜底**：若真实数据不足以覆盖极端场景（如 `_orphan=true`），用 Playwright `page.route()` mock `/api/trace/:id` 返回构造的 SpanNode JSON
+
+**关键断言点**：
+
+- 列表：分页参数正确传递、`is_error=true` 行高亮、Tooltip 显示全文、耗时格式化正确
+- 筛选：`applyFiltersAndFetch` 一次请求即到位、`resetFilters` 清空所有条件
+- 火焰图：SVG `<rect>` 数量 = span 数、选中态 `stroke="#000"`、颜色模式切换生效
+- 详情面板：错误 span 默认 Logs Tab、tags `"***"` 显示已打码 Tag、原始 JSON Tab 复制按钮
+- 极端场景：404 Result、500 重试、孤儿 span 虚线、error.message Alert
+- 竞态：快速翻页只保留最新结果（可用 Playwright 的 `waitForRequest` + `abort` 断言）
+
+**运行方式**：`npx playwright test`（若项目当前无 Playwright，e2e 文档同时说明如何按最小方式接入）
+
+---
+
+## 十一、参考
 
 - 前置设计：`docs/superpowers/specs/2026-07-14-agent-tracing-design.md`
 - 后端 DTO：`mooc-manus/internal/applications/dtos/trace.go`
