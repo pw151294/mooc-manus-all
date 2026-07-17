@@ -1,0 +1,82 @@
+{
+  "eval_id": 1,
+  "eval_name": "eval-platform-frontend",
+  "prompt": "帮我把 docs/superpowers/specs/2026-07-17-eval-platform-frontend-design.md 这份 spec 拆成多个可独立交付的子模块，每个模块产出一份 spec 设计文档和一份 e2e 功能验证文档，输出到 docs/harness/specs 和 docs/harness/e2e 下的合适位置。",
+  "assertions": [
+    {
+      "id": "produced-index-readme",
+      "text": "产出目录下存在 docs/harness/specs/<group>/README.md 索引文件",
+      "check": "find outputs -path '*/docs/harness/specs/*/README.md' | head -1"
+    },
+    {
+      "id": "specs-and-e2e-count-match",
+      "text": "spec 文件数量与 e2e 文件数量相等（每个模块 1:1 配对）",
+      "check": "specs_count == e2e_count；两者都在 3-6 范围内"
+    },
+    {
+      "id": "module-count-in-range",
+      "text": "模块数量在 3-6 之间（父规格覆盖 5 个页面/领域，合理拆分应落在此区间）",
+      "check": "count of M*-*-spec.md files"
+    },
+    {
+      "id": "filename-follows-convention",
+      "text": "所有 spec/e2e 文件名遵循 M{n}-<kebab-slug>-spec.md / -e2e.md 约定",
+      "check": "regex ^M[0-9]+-[a-z0-9-]+-(spec|e2e)\\.md$"
+    },
+    {
+      "id": "output-path-correct",
+      "text": "spec 输出到 docs/harness/specs/，e2e 输出到 docs/harness/e2e/，不混放",
+      "check": "specs 目录下无 *-e2e.md，e2e 目录下无 *-spec.md"
+    },
+    {
+      "id": "each-spec-declares-dependencies",
+      "text": "每个 spec 文件都在开头显式声明「依赖」和「被依赖」字段",
+      "check": "每个 spec 文件都含 '依赖' 与 '被依赖'（或等价表述）"
+    },
+    {
+      "id": "each-spec-references-parent",
+      "text": "每个 spec 引用父规格章节号（体现「切片而非重写」）",
+      "check": "每个 spec 至少一次匹配 '父规格' 或 '§' 引用"
+    },
+    {
+      "id": "each-spec-lists-deliverables",
+      "text": "每个 spec 显式列出交付物清单（§1.1 或等价）",
+      "check": "每个 spec 至少含一个「交付物」章节且列出具体文件路径"
+    },
+    {
+      "id": "each-spec-lists-non-goals",
+      "text": "每个 spec 显式列出非目标（避免范围蔓延）",
+      "check": "每个 spec 含「非目标」或等价章节"
+    },
+    {
+      "id": "e2e-checkitems-are-checkable",
+      "text": "每个 e2e 文档主体由 - [ ] 可勾选检查项组成，且每个模块至少 5 条",
+      "check": "grep -c '^- \\[ \\]' 每个 e2e >= 5"
+    },
+    {
+      "id": "e2e-has-expected",
+      "text": "e2e 检查项包含 Expected: 可观察结果（避免「应正常工作」这种模糊描述）",
+      "check": "每个 e2e 至少一半检查项含 'Expected'"
+    },
+    {
+      "id": "readme-has-dependency-graph",
+      "text": "README 包含依赖关系图（DAG 可视化）",
+      "check": "README 里含代码块或图示，且提到 M1→M2 或类似顺序"
+    },
+    {
+      "id": "no-circular-dependency",
+      "text": "模块依赖关系无环",
+      "check": "从每个 spec 的「依赖」字段解析出 DAG，无环"
+    },
+    {
+      "id": "covers-infrastructure-layer",
+      "text": "拆分识别出「基础设施/地基」层（M1），承载 types/api/store 共用产物",
+      "check": "存在 M1 且其职责涉及类型/API/状态管理基础"
+    },
+    {
+      "id": "covers-trace-deeplink",
+      "text": "拆分识别出 Trace 深链模块（父规格 §8.3 独立章节，是关键集成模块）",
+      "check": "存在一个模块专门处理 trace 深链"
+    }
+  ]
+}
