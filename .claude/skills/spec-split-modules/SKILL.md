@@ -12,8 +12,6 @@ allowed-tools: Bash, Read, Write, Edit
 每个子模块配一份**设计文档**（`docs/harness/specs/<group>/M{n}-*-spec.md`）和一份
 **功能验证文档**（`docs/harness/e2e/<group>/M{n}-*-e2e.md`），外加一份索引 README。
 
-产出物直接对齐本项目已验证的拆分模式（参见 `docs/harness/specs/eval-modules/`）。
-
 ## 何时用
 
 - 用户明确调用 `/spec-split-modules <spec-path>` 或语义等价的请求
@@ -139,16 +137,6 @@ docs/harness/e2e/<group-name>/
 - **保持中文**：文档正文用中文，代码/字段名保持原样
 - **产出路径固定**：`docs/harness/specs/<group>/` + `docs/harness/e2e/<group>/`（本项目约定，见 CLAUDE.md）
 - **文件名统一**：`M{n}-<kebab-slug>-spec.md` / `M{n}-<kebab-slug>-e2e.md`，编号即推荐执行顺序
-
-## 参考实例
-
-本项目已有一份高质量拆分产物可作对照：
-
-- 父规格：`docs/superpowers/specs/2026-07-17-eval-platform-frontend-design.md`
-- 拆分产物：`docs/harness/specs/eval-modules/`（M1-M5 各一份 spec + e2e + README）
-
-拆分成 5 个模块（M1 基础设施 / M2 用例管理 / M3 任务管理 / M4 任务详情 / M5 Trace 深链），
-是"分层 + 按页面"的组合拆分（split-algorithm.md §维度 A + C）。若不确定该怎么拆，Read 这份产物找感觉。
 
 ## Reference 索引
 
