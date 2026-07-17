@@ -1,0 +1,360 @@
+{
+  "projectId": "eval-platform-frontend",
+  "projectName": "评测平台前端实现",
+  "version": "1.0.0",
+  "zones": [
+    {
+      "id": "human-ai",
+      "label": "人机协作区",
+      "phases": ["P0", "P1", "P2"],
+      "driver": "human"
+    },
+    {
+      "id": "agent-harness",
+      "label": "智能体驱动区",
+      "phases": ["P3", "P4", "P5", "P6", "P7", "P8"],
+      "driver": "agent"
+    },
+    {
+      "id": "verify",
+      "label": "验证验收区",
+      "phases": ["P9", "P10"],
+      "driver": "mixed"
+    }
+  ],
+  "tasks": {
+    "t1": {
+      "title": "创建目录结构",
+      "owner": "开发者",
+      "description": "创建 pages/Eval/ 目录结构，包括 Cases/、Tasks/、TaskDetail/ 三个子目录",
+      "phase": "P1",
+      "zone": "human-ai",
+      "type": "arch",
+      "artifacts": ["pages/Eval/ 目录"],
+      "position": { "x": 280, "y": 130 }
+    },
+    "t2": {
+      "title": "定义类型系统",
+      "owner": "开发者",
+      "description": "定义 types/eval.ts，包含 15 个 DTO 接口（CaseView, TaskView, InstanceView 等）",
+      "phase": "P1",
+      "zone": "human-ai",
+      "type": "arch",
+      "artifacts": ["types/eval.ts"],
+      "position": { "x": 560, "y": 130 }
+    },
+    "t3": {
+      "title": "实现 API 层",
+      "owner": "开发者",
+      "description": "实现 api/modules/eval.ts，包含 15 个 API 函数（Case 6 个、Task 5 个、Instance 4 个）",
+      "phase": "P2",
+      "zone": "human-ai",
+      "type": "contract",
+      "artifacts": ["api/modules/eval.ts"],
+      "position": { "x": 420, "y": 230 }
+    },
+    "t4": {
+      "title": "实现用例 Store",
+      "owner": "开发者",
+      "description": "实现 store/evalCase.ts，包含分页、过滤、CRUD actions，使用 AbortController 处理竞态",
+      "phase": "P3",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["store/evalCase.ts"],
+      "position": { "x": 200, "y": 330 }
+    },
+    "t5": {
+      "title": "实现任务 Store",
+      "owner": "开发者",
+      "description": "实现 store/evalTask.ts，包含智能轮询逻辑（5s 间隔，有活动状态时自动刷新）",
+      "phase": "P3",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["store/evalTask.ts"],
+      "position": { "x": 420, "y": 330 }
+    },
+    "t6": {
+      "title": "实现实例 Store",
+      "owner": "开发者",
+      "description": "实现 store/evalInstance.ts，包含智能轮询逻辑（3s 间隔）和状态重置",
+      "phase": "P3",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["store/evalInstance.ts"],
+      "position": { "x": 640, "y": 330 }
+    },
+    "t7": {
+      "title": "注册路由与菜单",
+      "owner": "开发者",
+      "description": "在 router/index.tsx 注册 /eval 路由，在 Layout 添加父级菜单项",
+      "phase": "P3",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["router/index.tsx", "components/Layout/index.tsx"],
+      "position": { "x": 420, "y": 380 }
+    },
+    "t8": {
+      "title": "CaseTable 组件",
+      "owner": "开发者",
+      "description": "实现用例表格，包含分页、列定义、操作列（查看/编辑/删除）",
+      "phase": "P4",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Eval/Cases/CaseTable.tsx"],
+      "position": { "x": 100, "y": 430 }
+    },
+    "t9": {
+      "title": "ScriptInput 组件",
+      "owner": "开发者",
+      "description": "实现脚本输入组件，支持上传文件/直接编辑双 Tab，10MB 上传限制",
+      "phase": "P4",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Eval/Cases/ScriptInput.tsx"],
+      "position": { "x": 280, "y": 430 }
+    },
+    "t10": {
+      "title": "CaseFormModal 组件",
+      "owner": "开发者",
+      "description": "实现创建/编辑表单 Modal，包含 3 个脚本字段 Tabs（init/task/verify）",
+      "phase": "P4",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Eval/Cases/CaseFormModal.tsx"],
+      "position": { "x": 460, "y": 430 }
+    },
+    "t11": {
+      "title": "CaseDetailDrawer 组件",
+      "owner": "开发者",
+      "description": "实现只读详情 Drawer，展示元信息和 3 个脚本内容",
+      "phase": "P4",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Eval/Cases/CaseDetailDrawer.tsx"],
+      "position": { "x": 640, "y": 430 }
+    },
+    "t12": {
+      "title": "Cases 页面组装",
+      "owner": "开发者",
+      "description": "组装用例管理页面，集成过滤器、表格、Modal、Drawer，处理生命周期",
+      "phase": "P4",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Eval/Cases/index.tsx"],
+      "position": { "x": 820, "y": 430 }
+    },
+    "t13": {
+      "title": "TaskTable 组件",
+      "owner": "开发者",
+      "description": "实现任务表格，包含状态 Tag、进度显示、操作列（查看/重试/删除）",
+      "phase": "P5",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Eval/Tasks/TaskTable.tsx"],
+      "position": { "x": 150, "y": 530 }
+    },
+    "t14": {
+      "title": "TaskFilters 组件",
+      "owner": "开发者",
+      "description": "实现状态过滤器 Radio.Group（全部/待执行/运行中/已完成/失败）",
+      "phase": "P5",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Eval/Tasks/TaskFilters.tsx"],
+      "position": { "x": 350, "y": 530 }
+    },
+    "t15": {
+      "title": "TaskCreateModal 组件",
+      "owner": "开发者",
+      "description": "实现创建任务 Modal，双 Transfer 选择用例与 Agent，M×N 预览",
+      "phase": "P5",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Eval/Tasks/TaskCreateModal.tsx"],
+      "position": { "x": 550, "y": 530 }
+    },
+    "t16": {
+      "title": "Tasks 页面组装",
+      "owner": "开发者",
+      "description": "组装任务管理页面，集成过滤器、表格、创建 Modal，启动智能轮询",
+      "phase": "P5",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Eval/Tasks/index.tsx"],
+      "position": { "x": 750, "y": 530 }
+    },
+    "t17": {
+      "title": "TaskSummaryCard 组件",
+      "owner": "开发者",
+      "description": "实现任务汇总卡片，展示状态、进度条、时间信息、操作按钮",
+      "phase": "P6",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Eval/TaskDetail/TaskSummaryCard.tsx"],
+      "position": { "x": 100, "y": 630 }
+    },
+    "t18": {
+      "title": "InstanceFilters 组件",
+      "owner": "开发者",
+      "description": "实现实例状态过滤器（全部/待执行/运行中/已完成/失败/超时）",
+      "phase": "P6",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Eval/TaskDetail/InstanceFilters.tsx"],
+      "position": { "x": 280, "y": 630 }
+    },
+    "t19": {
+      "title": "InstanceTable 组件",
+      "owner": "开发者",
+      "description": "实现实例表格，展示状态 Icon、用例、Agent、尝试次数、耗时、Token",
+      "phase": "P6",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Eval/TaskDetail/InstanceTable.tsx"],
+      "position": { "x": 460, "y": 630 }
+    },
+    "t20": {
+      "title": "InstanceDrawer 组件",
+      "owner": "开发者",
+      "description": "实现实例详情 Drawer，4 个 Tabs（基础信息/执行结果/Token & 耗时/错误日志）",
+      "phase": "P6",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Eval/TaskDetail/InstanceDrawer.tsx"],
+      "position": { "x": 640, "y": 630 }
+    },
+    "t21": {
+      "title": "TaskDetail 页面组装",
+      "owner": "开发者",
+      "description": "组装任务详情页，集成汇总卡片、过滤器、实例表格、详情 Drawer，启动实例轮询",
+      "phase": "P6",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Eval/TaskDetail/index.tsx"],
+      "position": { "x": 820, "y": 630 }
+    },
+    "t22": {
+      "title": "改造 Trace 页面",
+      "owner": "开发者",
+      "description": "在 pages/Trace/index.tsx 添加 useSearchParams 支持，读取 traceId 自动打开 Modal",
+      "phase": "P7",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Trace/index.tsx"],
+      "position": { "x": 280, "y": 730 }
+    },
+    "t23": {
+      "title": "实现 Trace 跳转",
+      "owner": "开发者",
+      "description": "在 InstanceDrawer 实现「查看 Trace」按钮，调用 getInstanceTrace API，新 tab 打开",
+      "phase": "P7",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Eval/TaskDetail/InstanceDrawer.tsx"],
+      "position": { "x": 560, "y": 730 }
+    },
+    "t24": {
+      "title": "上传文件校验",
+      "owner": "开发者",
+      "description": "在 ScriptInput 添加 beforeUpload 校验，10MB 上限前置检查",
+      "phase": "P8",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["pages/Eval/Cases/ScriptInput.tsx"],
+      "position": { "x": 200, "y": 830 }
+    },
+    "t25": {
+      "title": "空状态组件补充",
+      "owner": "开发者",
+      "description": "在列表页、详情页添加 Empty 组件，处理无数据场景",
+      "phase": "P8",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["多个组件文件"],
+      "position": { "x": 420, "y": 830 }
+    },
+    "t26": {
+      "title": "错误提示优化",
+      "owner": "开发者",
+      "description": "优化 409/413/400 错误 toast 文案，提升用户体验",
+      "phase": "P8",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": ["多个组件文件"],
+      "position": { "x": 640, "y": 830 }
+    },
+    "t27": {
+      "title": "轮询停止验证",
+      "owner": "测试工程师",
+      "description": "验证离开页面后轮询自动停止，Network 面板无请求",
+      "phase": "P9",
+      "zone": "verify",
+      "type": "test",
+      "artifacts": ["E2E 测试报告"],
+      "position": { "x": 280, "y": 930 }
+    },
+    "t28": {
+      "title": "A11y 检查",
+      "owner": "测试工程师",
+      "description": "验证键盘导航、ARIA 属性、色彩对比、焦点管理符合 A11y 基线",
+      "phase": "P10",
+      "zone": "verify",
+      "type": "test",
+      "artifacts": ["A11y 检查报告"],
+      "position": { "x": 560, "y": 930 }
+    },
+    "t29": {
+      "title": "UAT 与部署",
+      "owner": "项目经理",
+      "description": "用户验收测试通过，部署到生产环境",
+      "phase": "P10",
+      "zone": "verify",
+      "type": "pm",
+      "artifacts": ["部署记录"],
+      "position": { "x": 280, "y": 1030 }
+    }
+  },
+  "edges": [
+    { "from": "t1", "to": "t2", "type": "normal" },
+    { "from": "t2", "to": "t3", "type": "contract" },
+    { "from": "t3", "to": "t4", "type": "normal" },
+    { "from": "t3", "to": "t5", "type": "normal" },
+    { "from": "t3", "to": "t6", "type": "normal" },
+    { "from": "t4", "to": "t7", "type": "normal" },
+    { "from": "t5", "to": "t7", "type": "normal" },
+    { "from": "t6", "to": "t7", "type": "normal" },
+    { "from": "t7", "to": "t8", "type": "normal" },
+    { "from": "t7", "to": "t9", "type": "normal" },
+    { "from": "t7", "to": "t10", "type": "normal" },
+    { "from": "t7", "to": "t11", "type": "normal" },
+    { "from": "t8", "to": "t12", "type": "normal" },
+    { "from": "t9", "to": "t10", "type": "normal" },
+    { "from": "t10", "to": "t12", "type": "normal" },
+    { "from": "t11", "to": "t12", "type": "normal" },
+    { "from": "t12", "to": "t13", "type": "normal" },
+    { "from": "t12", "to": "t14", "type": "normal" },
+    { "from": "t12", "to": "t15", "type": "normal" },
+    { "from": "t13", "to": "t16", "type": "normal" },
+    { "from": "t14", "to": "t16", "type": "normal" },
+    { "from": "t15", "to": "t16", "type": "normal" },
+    { "from": "t16", "to": "t17", "type": "normal" },
+    { "from": "t16", "to": "t18", "type": "normal" },
+    { "from": "t16", "to": "t19", "type": "normal" },
+    { "from": "t16", "to": "t20", "type": "normal" },
+    { "from": "t17", "to": "t21", "type": "normal" },
+    { "from": "t18", "to": "t21", "type": "normal" },
+    { "from": "t19", "to": "t21", "type": "normal" },
+    { "from": "t20", "to": "t21", "type": "normal" },
+    { "from": "t21", "to": "t22", "type": "normal" },
+    { "from": "t21", "to": "t23", "type": "normal" },
+    { "from": "t22", "to": "t23", "type": "normal" },
+    { "from": "t23", "to": "t24", "type": "normal" },
+    { "from": "t23", "to": "t25", "type": "normal" },
+    { "from": "t23", "to": "t26", "type": "normal" },
+    { "from": "t24", "to": "t27", "type": "normal" },
+    { "from": "t25", "to": "t27", "type": "normal" },
+    { "from": "t26", "to": "t27", "type": "normal" },
+    { "from": "t27", "to": "t28", "type": "normal" },
+    { "from": "t28", "to": "t29", "type": "normal" }
+  ]
+}
