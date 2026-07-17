@@ -1,0 +1,235 @@
+{
+  "projectId": "eval-platform-frontend",
+  "projectName": "评测平台前端实现",
+  "version": "1.1.0",
+  "zones": [
+    { "id": "human-ai", "label": "人机协作区", "phases": ["P0","P1","P2"], "driver": "human" },
+    { "id": "agent-harness", "label": "智能体驱动区", "phases": ["P3","P4","P5","P6","P7","P8"], "driver": "agent" },
+    { "id": "verify", "label": "验证验收区", "phases": ["P9","P10"], "driver": "mixed" }
+  ],
+  "tasks": {
+    "t1": {
+      "title": "T1 定义类型（types/eval.ts）",
+      "owner": "前端",
+      "description": "定义 Case/Task/Instance/Agent 15 个 TypeScript 接口，字段保持 snake_case 透传后端",
+      "phase": "P2", "zone": "human-ai", "type": "contract",
+      "artifacts": ["mooc-manus-web/src/types/eval.ts"],
+      "position": { "x": 280, "y": 310 }
+    },
+    "t2": {
+      "title": "T2 实现 API 模块",
+      "owner": "前端",
+      "description": "15 个 API 函数：Case 6 + Task 5 + Instance 4 + AgentConfig 1；uploadContent 走 FormData",
+      "phase": "P2", "zone": "human-ai", "type": "contract",
+      "artifacts": ["mooc-manus-web/src/api/modules/eval.ts"],
+      "position": { "x": 620, "y": 400 }
+    },
+    "t3": {
+      "title": "T3 evalCase Store",
+      "owner": "前端",
+      "description": "AbortController 竞态处理 + CRUD + 分页过滤；用例静态无轮询",
+      "phase": "P3", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["mooc-manus-web/src/store/evalCase.ts"],
+      "position": { "x": 70, "y": 510 }
+    },
+    "t4": {
+      "title": "T4 evalTask Store + 5s 轮询",
+      "owner": "前端",
+      "description": "智能轮询 5s，仅当存在 PENDING/RUNNING 时刷新；全终态自动停止",
+      "phase": "P3", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["mooc-manus-web/src/store/evalTask.ts"],
+      "position": { "x": 300, "y": 510 }
+    },
+    "t5": {
+      "title": "T5 evalInstance Store + 3s 轮询 + reset",
+      "owner": "前端",
+      "description": "3s 轮询 + taskId 感知；离开详情页时 reset 清空 + 停轮询",
+      "phase": "P3", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["mooc-manus-web/src/store/evalInstance.ts"],
+      "position": { "x": 560, "y": 510 }
+    },
+    "t6": {
+      "title": "T6 注册路由与菜单",
+      "owner": "前端",
+      "description": "/eval/cases、/eval/tasks、/eval/tasks/:id 三条路由 + 侧边菜单 ExperimentOutlined",
+      "phase": "P3", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["router/index.tsx", "components/Layout/index.tsx"],
+      "position": { "x": 820, "y": 510 }
+    },
+    "t7": {
+      "title": "T7 ScriptInput 组件",
+      "owner": "前端",
+      "description": "双 Tab：Dragger 上传 + TextArea 编辑；10MB 校验；成功后自动切编辑 tab",
+      "phase": "P4", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["pages/Eval/Cases/ScriptInput.tsx"],
+      "position": { "x": 70, "y": 645 }
+    },
+    "t8": {
+      "title": "T8 CaseTable 组件",
+      "owner": "前端",
+      "description": "列：名称/描述/标签/时间/操作；连 evalCase store；分页 + 查看/编辑/删除",
+      "phase": "P4", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["pages/Eval/Cases/CaseTable.tsx"],
+      "position": { "x": 280, "y": 670 }
+    },
+    "t9": {
+      "title": "T9 CaseFormModal 组件",
+      "owner": "前端",
+      "description": "元信息 + 3 Tabs（Init/Task/Verify）嵌 ScriptInput；create/edit 双模式",
+      "phase": "P4", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["pages/Eval/Cases/CaseFormModal.tsx"],
+      "position": { "x": 490, "y": 670 }
+    },
+    "t10": {
+      "title": "T10 CaseDetailDrawer 组件",
+      "owner": "前端",
+      "description": "Descriptions + 3 Tabs 只读 TextArea；底部关闭/编辑",
+      "phase": "P4", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["pages/Eval/Cases/CaseDetailDrawer.tsx"],
+      "position": { "x": 700, "y": 670 }
+    },
+    "t11": {
+      "title": "T11 Cases 页面组装",
+      "owner": "前端",
+      "description": "顶部过滤器（name + tags）+ CaseTable + Modal + Drawer；useEffect fetchCases",
+      "phase": "P4", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["pages/Eval/Cases/index.tsx"],
+      "position": { "x": 500, "y": 780 }
+    },
+    "t12": {
+      "title": "T12 TaskFilters 组件",
+      "owner": "前端",
+      "description": "Radio.Group：全部/PENDING/RUNNING/SUCCEEDED/FAILED",
+      "phase": "P5", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["pages/Eval/Tasks/TaskFilters.tsx"],
+      "position": { "x": 100, "y": 840 }
+    },
+    "t13": {
+      "title": "T13 TaskTable 组件",
+      "owner": "前端",
+      "description": "列：名称/状态/进度/时间/操作；状态 Tag 颜色 + 进度显示 + 行点击跳详情",
+      "phase": "P5", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["pages/Eval/Tasks/TaskTable.tsx"],
+      "position": { "x": 380, "y": 840 }
+    },
+    "t14": {
+      "title": "T14 TaskCreateModal 组件",
+      "owner": "前端",
+      "description": "双 Transfer（用例 + Agent）+ M×N 数量预览 Alert",
+      "phase": "P5", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["pages/Eval/Tasks/TaskCreateModal.tsx"],
+      "position": { "x": 660, "y": 840 }
+    },
+    "t15": {
+      "title": "T15 Tasks 页面组装",
+      "owner": "前端",
+      "description": "组装 3 组件；fetchTasks + startPolling + cleanup stopPolling",
+      "phase": "P5", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["pages/Eval/Tasks/index.tsx"],
+      "position": { "x": 500, "y": 950 }
+    },
+    "t16": {
+      "title": "T16 TaskSummaryCard 组件",
+      "owner": "前端",
+      "description": "任务名/状态/进度条/时间；返回列表/重试/删除操作",
+      "phase": "P6", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["pages/Eval/TaskDetail/TaskSummaryCard.tsx"],
+      "position": { "x": 100, "y": 1020 }
+    },
+    "t17": {
+      "title": "T17 InstanceFilters 组件",
+      "owner": "前端",
+      "description": "Radio.Group：全部/PENDING/RUNNING/SUCCEEDED/FAILED/TIMEOUT",
+      "phase": "P6", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["pages/Eval/TaskDetail/InstanceFilters.tsx"],
+      "position": { "x": 320, "y": 1020 }
+    },
+    "t18": {
+      "title": "T18 InstanceTable 组件",
+      "owner": "前端",
+      "description": "列：状态/用例/Agent/attempt/耗时/token/操作；操作：详情/重试/删除/Trace",
+      "phase": "P6", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["pages/Eval/TaskDetail/InstanceTable.tsx"],
+      "position": { "x": 540, "y": 1020 }
+    },
+    "t19": {
+      "title": "T19 InstanceDrawer 组件",
+      "owner": "前端",
+      "description": "4 Tabs：基础/结果/Token/错误；handleViewTrace 跳深链",
+      "phase": "P6", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["pages/Eval/TaskDetail/InstanceDrawer.tsx"],
+      "position": { "x": 760, "y": 1020 }
+    },
+    "t20": {
+      "title": "T20 TaskDetail 页面组装",
+      "owner": "前端",
+      "description": "组装 4 组件；fetchInstances + startPolling + cleanup reset",
+      "phase": "P6", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["pages/Eval/TaskDetail/index.tsx"],
+      "position": { "x": 500, "y": 1110 }
+    },
+    "t21": {
+      "title": "T21 Trace 深链改造",
+      "owner": "前端",
+      "description": "useSearchParams 读 traceId → 自动开 Modal + 清 URL",
+      "phase": "P7", "zone": "agent-harness", "type": "fe",
+      "artifacts": ["pages/Trace/index.tsx"],
+      "position": { "x": 320, "y": 1170 }
+    },
+    "t22": {
+      "title": "T22 编写 E2E 验证文档",
+      "owner": "PM/前端",
+      "description": "覆盖用例/任务/详情/联动/边界 5 大类 40+ 检查点",
+      "phase": "P7", "zone": "agent-harness", "type": "pm",
+      "artifacts": ["docs/superpowers/plans/2026-07-17-eval-platform-e2e.md"],
+      "position": { "x": 700, "y": 1170 }
+    },
+    "t23": {
+      "title": "T23 端到端功能验证",
+      "owner": "PM/前端",
+      "description": "逐项走 E2E 文档 § 9.2.1-9.2.5；记录结果 → 修复 → Final Commit",
+      "phase": "P9", "zone": "verify", "type": "test",
+      "artifacts": ["docs/superpowers/plans/2026-07-17-eval-platform-verification-result.md"],
+      "position": { "x": 490, "y": 1500 }
+    }
+  },
+  "edges": [
+    { "from": "t1", "to": "t2", "type": "normal" },
+    { "from": "t1", "to": "t3", "type": "contract" },
+    { "from": "t1", "to": "t4", "type": "contract" },
+    { "from": "t1", "to": "t5", "type": "contract" },
+    { "from": "t2", "to": "t3", "type": "contract" },
+    { "from": "t2", "to": "t4", "type": "contract" },
+    { "from": "t2", "to": "t5", "type": "contract" },
+    { "from": "t3", "to": "t8", "type": "normal" },
+    { "from": "t3", "to": "t9", "type": "normal" },
+    { "from": "t3", "to": "t10", "type": "normal" },
+    { "from": "t3", "to": "t11", "type": "normal" },
+    { "from": "t4", "to": "t13", "type": "normal" },
+    { "from": "t4", "to": "t15", "type": "normal" },
+    { "from": "t5", "to": "t18", "type": "normal" },
+    { "from": "t5", "to": "t19", "type": "normal" },
+    { "from": "t5", "to": "t20", "type": "normal" },
+    { "from": "t6", "to": "t11", "type": "normal" },
+    { "from": "t6", "to": "t15", "type": "normal" },
+    { "from": "t6", "to": "t20", "type": "normal" },
+    { "from": "t7", "to": "t9", "type": "normal" },
+    { "from": "t7", "to": "t10", "type": "normal" },
+    { "from": "t8", "to": "t11", "type": "normal" },
+    { "from": "t9", "to": "t11", "type": "normal" },
+    { "from": "t10", "to": "t11", "type": "normal" },
+    { "from": "t12", "to": "t15", "type": "normal" },
+    { "from": "t13", "to": "t15", "type": "normal" },
+    { "from": "t14", "to": "t15", "type": "normal" },
+    { "from": "t16", "to": "t20", "type": "normal" },
+    { "from": "t17", "to": "t20", "type": "normal" },
+    { "from": "t18", "to": "t20", "type": "normal" },
+    { "from": "t19", "to": "t20", "type": "normal" },
+    { "from": "t19", "to": "t21", "type": "normal" },
+    { "from": "t11", "to": "t22", "type": "normal" },
+    { "from": "t15", "to": "t22", "type": "normal" },
+    { "from": "t20", "to": "t22", "type": "normal" },
+    { "from": "t21", "to": "t23", "type": "normal" },
+    { "from": "t22", "to": "t23", "type": "pass" }
+  ]
+}
