@@ -1,0 +1,111 @@
+{
+  "eval_name": "agent-tracing",
+  "run": "with_skill",
+  "passed": 17,
+  "total": 17,
+  "pass_rate": 1.0,
+  "expectations": [
+    {
+      "id": "produced-index-readme",
+      "text": "产出目录下存在 docs/harness/specs/<group>/README.md 索引文件",
+      "passed": true,
+      "evidence": "README at docs/harness/specs/agent-tracing-modules/README.md"
+    },
+    {
+      "id": "specs-and-e2e-count-match",
+      "text": "spec 文件数量与 e2e 文件数量相等",
+      "passed": true,
+      "evidence": "specs=4, e2es=4"
+    },
+    {
+      "id": "module-count-in-range",
+      "text": "模块数量在 3-7 之间",
+      "passed": true,
+      "evidence": "count=4"
+    },
+    {
+      "id": "filename-follows-convention",
+      "text": "文件名遵循 M{n}-<kebab-slug>-(spec|e2e).md",
+      "passed": true,
+      "evidence": "all conforming"
+    },
+    {
+      "id": "output-path-correct",
+      "text": "spec 输出到 specs/，e2e 输出到 e2e/，不混放",
+      "passed": true,
+      "evidence": "clean"
+    },
+    {
+      "id": "each-spec-declares-dependencies",
+      "text": "每个 spec 在开头显式声明「依赖」字段",
+      "passed": true,
+      "evidence": "all declare deps"
+    },
+    {
+      "id": "each-spec-references-parent",
+      "text": "每个 spec 引用父规格章节号",
+      "passed": true,
+      "evidence": "all reference parent"
+    },
+    {
+      "id": "each-spec-lists-deliverables",
+      "text": "每个 spec 显式列出交付物清单",
+      "passed": true,
+      "evidence": "all list deliverables"
+    },
+    {
+      "id": "each-spec-lists-non-goals",
+      "text": "每个 spec 显式列出非目标",
+      "passed": true,
+      "evidence": "all list non-goals"
+    },
+    {
+      "id": "e2e-checkitems-are-checkable",
+      "text": "每个 e2e 至少 5 条 - [ ] 检查项",
+      "passed": true,
+      "evidence": "all >=5"
+    },
+    {
+      "id": "e2e-has-expected",
+      "text": "e2e 检查项含 Expected: 可观察结果（至少一半）",
+      "passed": true,
+      "evidence": "all have Expected"
+    },
+    {
+      "id": "readme-has-dependency-graph",
+      "text": "README 含依赖关系图",
+      "passed": true,
+      "evidence": "graph found"
+    },
+    {
+      "id": "no-circular-dependency",
+      "text": "模块依赖关系无环",
+      "passed": true,
+      "evidence": "deps={'M1': [], 'M2': [], 'M3': [], 'M4': []}"
+    },
+    {
+      "id": "covers-data-model-layer",
+      "text": "识别出数据模型/持久化层",
+      "passed": true,
+      "evidence": "found"
+    },
+    {
+      "id": "covers-instrumentation",
+      "text": "识别出埋点/instrumentation 模块",
+      "passed": true,
+      "evidence": "found"
+    },
+    {
+      "id": "covers-query-api",
+      "text": "识别出查询 API 模块",
+      "passed": true,
+      "evidence": "found"
+    },
+    {
+      "id": "e2e-not-just-frontend-ui",
+      "text": "e2e 含 curl/go test/DB 校验，不能全是 UI",
+      "passed": true,
+      "evidence": "all have backend verifications"
+    }
+  ]
+}

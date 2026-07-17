@@ -1,0 +1,91 @@
+{
+  "skill_name": "spec-split-modules",
+  "iteration": 1,
+  "configurations": [
+    {
+      "name": "with_skill",
+      "label": "With skill (v1)"
+    },
+    {
+      "name": "without_skill",
+      "label": "Baseline (no skill)"
+    }
+  ],
+  "summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0
+      },
+      "duration_seconds": {
+        "mean": 461.0,
+        "stddev": 11.5966
+      },
+      "total_tokens": {
+        "mean": 50807,
+        "stddev": 2429.6189
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.8412,
+        "stddev": 0.0582
+      },
+      "duration_seconds": {
+        "mean": 549.4,
+        "stddev": 110.7329
+      },
+      "total_tokens": {
+        "mean": 57053,
+        "stddev": 1674.4289
+      }
+    }
+  },
+  "per_eval": [
+    {
+      "eval_name": "eval-platform-frontend",
+      "eval_id": "eval-1-eval-platform-frontend",
+      "results": {
+        "with_skill": {
+          "passed": 15,
+          "total": 15,
+          "pass_rate": 1.0,
+          "duration_seconds": 452.8,
+          "total_tokens": 49089
+        },
+        "without_skill": {
+          "passed": 12,
+          "total": 15,
+          "pass_rate": 0.8,
+          "duration_seconds": 471.1,
+          "total_tokens": 58237
+        }
+      }
+    },
+    {
+      "eval_name": "agent-tracing",
+      "eval_id": "eval-2-agent-tracing",
+      "results": {
+        "with_skill": {
+          "passed": 17,
+          "total": 17,
+          "pass_rate": 1.0,
+          "duration_seconds": 469.2,
+          "total_tokens": 52525
+        },
+        "without_skill": {
+          "passed": 15,
+          "total": 17,
+          "pass_rate": 0.8823529411764706,
+          "duration_seconds": 627.7,
+          "total_tokens": 55869
+        }
+      }
+    }
+  ],
+  "deltas": {
+    "pass_rate": 0.1588,
+    "duration_seconds": -88.4,
+    "total_tokens": -6246
+  }
+}
