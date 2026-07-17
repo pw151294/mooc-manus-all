@@ -1,3 +1,20 @@
+
+## 执行说明（重要）
+
+**Phase 1（Task 1-6）**：每步包含完整代码示例，可直接复制粘贴执行。
+
+**Phase 2-4（Task 7-20）**：提供任务标题、文件清单、要点概要。**执行时需结合设计文档 §7 核心组件交互设计**：
+1. 读取对应组件的设计section（如 Task 8 → §7.1.2 CaseTable.tsx）
+2. 基于 layout 描述自行分解为 3-6 个 sub-steps
+3. 每步包含：action（写什么）→ 验证（typecheck/手动测试）→ commit
+4. 参照 Task 1-6 的模式（骨架 → 功能 → 验证 → commit）
+
+**Phase 5-6（Task 21-22）**：包含完整步骤。
+
+**理由**：组件实现遵循固定模式（state连接 → JSX layout → 事件处理 → 样式 → 测试），完全展开会让计划达到 3000+ 行，不易导航。设计文档 §7 已提供完整 JSX 示例，实施者基于此细化步骤更灵活。
+
+---
+
 # 评测平台前端实施计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -1371,3 +1388,82 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 ---
 
 **实施计划完成。** Phase 2-4 的详细分步内容（Task 7-20）请在执行时参照设计文档 §7 核心组件交互设计，按 TDD 模式逐步实现。每个组件遵循：写失败测试 → 实现骨架 → 通过测试 → 完善功能 → commit 的节奏。
+
+### Task 23: 端到端功能验证
+
+**Files:**
+- Reference: `docs/superpowers/plans/2026-07-17-eval-platform-e2e.md`（Task 22 产出）
+
+- [ ] **Step 1: 验证用例管理全流程**
+
+逐项执行 E2E 文档 § 9.2.1 的检查点：
+- 创建用例（3 种输入方式）
+- 编辑用例（name / tags / verify_script）
+- 删除用例（空闲 / 被引用 409）
+- 列表过滤（name_like / tags）
+- 分页翻页
+
+Expected: 所有检查点通过
+
+- [ ] **Step 2: 验证任务管理全流程**
+
+逐项执行 E2E 文档 § 9.2.2 的检查点：
+- 创建任务（Transfer 选择 + M×N 预览）
+- 任务列表轮询（5s 刷新 + 终态停止）
+- 过滤任务（按 status）
+- 删除任务
+
+Expected: 所有检查点通过
+
+- [ ] **Step 3: 验证任务详情与实例全流程**
+
+逐项执行 E2E 文档 § 9.2.3 的检查点：
+- 进入详情页（URL / 卡片 / 表格）
+- 实例列表轮询（3s 刷新 + 终态停止）
+- 实例过滤（按 status）
+- 查看实例详情（4 Tabs）
+- 重试实例（FAILED 成功 / SUCCEEDED 409）
+- 删除实例（终态成功 / RUNNING 409）
+- 查看 Trace（新 tab + Modal 自动打开）
+
+Expected: 所有检查点通过
+
+- [ ] **Step 4: 验证跨页面联动**
+
+逐项执行 E2E 文档 § 9.2.4 的检查点：
+- 删除用例影响任务（RUNNING 409 / SUCCEEDED 成功）
+- 刷新与深链（详情页刷新 / 新 tab URL 访问）
+
+Expected: 所有检查点通过
+
+- [ ] **Step 5: 验证边界与异常**
+
+逐项执行 E2E 文档 § 9.2.5 的检查点：
+- 上传文件过大（10MB 阻止）
+- 上传非 UTF-8（400 错误）
+- 网络中断（loading + toast）
+- 空状态（Empty 组件）
+- 离开页面轮询停止
+
+Expected: 所有检查点通过
+
+- [ ] **Step 6: 记录验证结果**
+
+创建验证报告 `docs/superpowers/plans/2026-07-17-eval-platform-verification-result.md`，记录：
+- 通过的检查点列表
+- 失败的检查点 + 错误描述 + 截图
+- 性能观察（轮询频率 / 响应时间）
+
+- [ ] **Step 7: 修复失败项（如有）**
+
+For each failed checkpoint:
+1. 定位问题（组件 / store / API）
+2. 修复代码
+3. 重新验证该检查点
+4. Commit 修复
+
+- [ ] **Step 8: Final Commit**
+
+所有检查点通过后，执行 Final Commit（见计划末尾）
+
+---
