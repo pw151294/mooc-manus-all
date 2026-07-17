@@ -949,12 +949,21 @@ useEffect(() => {
 | 列 | 数据源 | 渲染 | 宽度 |
 |---|---|---|---|
 | 状态 | `status` | Icon（成功绿勾/失败红叉/运行中Loading） | 80px |
-| 用例 | `case_id` | 需要关联查用例名（或直接显示 ID） | 150px |
-| Agent | `agent_config_ids` | 需要关联查 provider/model | 180px |
+| 用例 | `case_id` | 显示用例 ID（可选：预加载用例列表映射为 name） | 150px |
+| Agent | `task_id` 关联 | **注**：InstanceView 无 agent_config_id，需通过 TaskView.agent_config_ids 推断（见下方说明） | 180px |
 | 尝试次数 | `attempt` | 纯数字 | 80px |
 | 耗时 | `started_at` & `finished_at` | 计算差值，格式化为"X 分 Y 秒" | 100px |
 | Token | `result.total_tokens` | 纯数字，可空显示 `--` | 100px |
 | 操作 | - | 查看详情/重试/删除/查看Trace | 200px |
+
+**Agent 列数据来源说明**：
+- **问题**：后端 InstanceView 只有 `task_id` / `case_id`，无 `agent_config_id` 字段
+- **方案**：TaskDetail 页面已通过 `getTask(taskId)` 拉取 TaskView（含 `agent_config_ids` 数组）
+- **实现**：
+  1. 若任务只用了 1 个 agent：所有实例都用该 agent，直接显示 `${provider} - ${model_name}`
+  2. 若任务用了 N 个 agent（M×N 组合）：通过实例在列表中的位置推断（第 i 个实例对应 `agent_config_ids[i % N]`）
+  3. **简化实现**：初版直接显示"多 Agent 任务"，不做推断；点开 InstanceDrawer 后从 conversation metadata 或 trace 中获取实际 agent
+- **未来优化**：后端扩展 InstanceView 加 `agent_config_id` 字段（需改数据库 schema + domain service）
 
 **状态 Icon**：
 ```tsx
@@ -1075,7 +1084,12 @@ const statusIconMap: Record<string, ReactNode> = {
   <div style={{ textAlign: 'right', marginTop: 16 }}>
     <Space>
       <Button onClick={onClose}>关闭</Button>
-      <Button onClick={handleViewTrace}>查看 Trace</Button>
+      <Button 
+        onClick={handleViewTrace}
+        disabled={!instance.trace_id}
+      >
+        查看 Trace
+      </Button>
       {['FAILED', 'TIMEOUT'].includes(instance.status) && (
         <Button type="primary" onClick={handleRetry}>重试</Button>
       )}
@@ -1087,6 +1101,10 @@ const statusIconMap: Record<string, ReactNode> = {
 **查看 Trace 逻辑**：
 ```typescript
 const handleViewTrace = async () => {
+  if (!instance.trace_id) {
+    message.warning('该实例尚未生成 Trace');
+    return;
+  }
   try {
     const { trace_id } = await getInstanceTrace(instance.id);
     window.open(`/traces?traceId=${trace_id}`, '_blank');
