@@ -1,0 +1,92 @@
+{
+  "eval_id": 2,
+  "eval_name": "agent-tracing",
+  "prompt": "帮我把 docs/superpowers/specs/2026-07-14-agent-tracing-design.md 这份 spec 拆成多个可独立交付的子模块，每个模块产出一份 spec 设计文档和一份 e2e 功能验证文档，输出到 docs/harness/specs 和 docs/harness/e2e 下的合适位置。",
+  "assertions": [
+    {
+      "id": "produced-index-readme",
+      "text": "产出目录下存在 docs/harness/specs/<group>/README.md 索引文件",
+      "check": "find outputs -path '*/docs/harness/specs/*/README.md' | head -1"
+    },
+    {
+      "id": "specs-and-e2e-count-match",
+      "text": "spec 文件数量与 e2e 文件数量相等（每个模块 1:1 配对）",
+      "check": "specs_count == e2e_count"
+    },
+    {
+      "id": "module-count-in-range",
+      "text": "模块数量在 3-7 之间（父规格覆盖数据模型/埋点/查询 API/性能等多维度，合理拆分应落在此区间）",
+      "check": "count of M*-*-spec.md files in [3,7]"
+    },
+    {
+      "id": "filename-follows-convention",
+      "text": "所有 spec/e2e 文件名遵循 M{n}-<kebab-slug>-spec.md / -e2e.md 约定",
+      "check": "regex ^M[0-9]+-[a-z0-9-]+-(spec|e2e)\\.md$"
+    },
+    {
+      "id": "output-path-correct",
+      "text": "spec 输出到 docs/harness/specs/，e2e 输出到 docs/harness/e2e/，不混放",
+      "check": "specs 目录下无 *-e2e.md，e2e 目录下无 *-spec.md"
+    },
+    {
+      "id": "each-spec-declares-dependencies",
+      "text": "每个 spec 都在开头显式声明「依赖」和「被依赖」字段",
+      "check": "每个 spec 文件都含 '依赖' 与 '被依赖'（或等价表述）"
+    },
+    {
+      "id": "each-spec-references-parent",
+      "text": "每个 spec 引用父规格章节号（体现切片而非重写）",
+      "check": "每个 spec 至少一次匹配 '父规格' 或 '§' 引用"
+    },
+    {
+      "id": "each-spec-lists-deliverables",
+      "text": "每个 spec 显式列出交付物清单（§1.1 或等价）",
+      "check": "每个 spec 至少含一个「交付物」章节且列出具体文件"
+    },
+    {
+      "id": "each-spec-lists-non-goals",
+      "text": "每个 spec 显式列出非目标",
+      "check": "每个 spec 含「非目标」或等价章节"
+    },
+    {
+      "id": "e2e-checkitems-are-checkable",
+      "text": "每个 e2e 文档主体由 - [ ] 可勾选检查项组成，且每个模块至少 5 条",
+      "check": "grep -c '^- \\[ \\]' 每个 e2e >= 5"
+    },
+    {
+      "id": "e2e-has-expected",
+      "text": "e2e 检查项包含 Expected: 可观察结果",
+      "check": "每个 e2e 至少一半检查项含 'Expected'"
+    },
+    {
+      "id": "readme-has-dependency-graph",
+      "text": "README 包含依赖关系图",
+      "check": "README 含代码块或图示"
+    },
+    {
+      "id": "no-circular-dependency",
+      "text": "模块依赖关系无环",
+      "check": "从每个 spec 的「依赖」字段解析出 DAG，无环"
+    },
+    {
+      "id": "covers-data-model-layer",
+      "text": "识别出「数据模型/持久化」层（Span/SpanNode/Repository/DDL 是父规格 §三 独立章节，属基础层）",
+      "check": "存在模块承载数据模型 + 存储"
+    },
+    {
+      "id": "covers-instrumentation",
+      "text": "识别出「埋点」模块（父规格 §四 是最独立、篇幅最大的能力单元）",
+      "check": "存在专门的埋点/instrumentation 模块"
+    },
+    {
+      "id": "covers-query-api",
+      "text": "识别出「查询 API」模块（父规格 §六 独立能力单元）",
+      "check": "存在专门的查询 API 模块"
+    },
+    {
+      "id": "e2e-not-just-frontend-ui",
+      "text": "agent-tracing 是后端类模块，e2e 应含 curl/单元测试/DB 校验等，不能全是浏览器 UI 操作",
+      "check": "e2e 内容含 curl 或 Run: 或 go test 等后端验证手段"
+    }
+  ]
+}
