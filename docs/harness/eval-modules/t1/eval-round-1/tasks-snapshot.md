@@ -1,0 +1,34 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]: Mooc Manus
+  - generic [ref=e7]:
+    - complementary [ref=e8]:
+      - menu [ref=e10]:
+        - menuitem "message 智能体对话" [ref=e11] [cursor=pointer]:
+          - img "message" [ref=e12]
+          - generic [ref=e15]: 智能体对话
+        - menuitem "setting 模型配置" [ref=e16] [cursor=pointer]:
+          - img "setting" [ref=e17]
+          - generic [ref=e20]: 模型配置
+        - menuitem "tool 工具管理" [expanded] [ref=e21] [cursor=pointer]:
+          - img "tool" [ref=e22]
+          - generic [ref=e25]: 工具管理
+        - menu [ref=e26]:
+          - menuitem "工具供应商" [ref=e27] [cursor=pointer]
+          - menuitem "工具函数" [ref=e29] [cursor=pointer]
+        - menuitem "thunderbolt Skill管理" [ref=e31] [cursor=pointer]:
+          - img "thunderbolt" [ref=e32]
+          - generic [ref=e35]: Skill管理
+        - menuitem "node-index 会话追踪" [ref=e36] [cursor=pointer]:
+          - img "node-index" [ref=e37]
+          - generic [ref=e40]: 会话追踪
+        - menuitem "experiment 评测平台" [expanded] [ref=e41] [cursor=pointer]:
+          - img "experiment" [ref=e42]
+          - generic [ref=e45]: 评测平台
+        - menu [ref=e46]:
+          - menuitem "用例管理" [ref=e47] [cursor=pointer]
+          - menuitem "任务管理" [active] [ref=e49] [cursor=pointer]
+    - main [ref=e51]:
+      - generic [ref=e243]:
+        - heading "任务管理" [level=2] [ref=e244]
+        - paragraph [ref=e245]: 功能实现中...

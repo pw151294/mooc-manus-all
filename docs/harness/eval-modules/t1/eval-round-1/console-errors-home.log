@@ -1,0 +1,10 @@
+Total messages: 10 (Errors: 7, Warnings: 0)
+Returning 7 messages for level "error"
+
+[ERROR] Warning: [antd: Space] `direction` is deprecated. Please use `orientation` instead. @ http://localhost:3000/@vite/client:524
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/app/config:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/tools/provider/list:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/skill/listAll:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/tools/provider/list:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/app/config:0
+[ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/skill/listAll:0

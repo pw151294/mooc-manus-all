@@ -1,0 +1,80 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]: Mooc Manus
+  - generic [ref=e7]:
+    - complementary [ref=e8]:
+      - menu [ref=e10]:
+        - menuitem "message 智能体对话" [ref=e11] [cursor=pointer]:
+          - img "message" [ref=e12]
+          - generic [ref=e15]: 智能体对话
+        - menuitem "setting 模型配置" [ref=e16] [cursor=pointer]:
+          - img "setting" [ref=e17]
+          - generic [ref=e20]: 模型配置
+        - menuitem "tool 工具管理" [expanded] [ref=e21] [cursor=pointer]:
+          - img "tool" [ref=e22]
+          - generic [ref=e25]: 工具管理
+        - menu [ref=e26]:
+          - menuitem "工具供应商" [ref=e27] [cursor=pointer]
+          - menuitem "工具函数" [ref=e29] [cursor=pointer]
+        - menuitem "thunderbolt Skill管理" [ref=e31] [cursor=pointer]:
+          - img "thunderbolt" [ref=e32]
+          - generic [ref=e35]: Skill管理
+        - menuitem "node-index 会话追踪" [ref=e36] [cursor=pointer]:
+          - img "node-index" [ref=e37]
+          - generic [ref=e40]: 会话追踪
+        - menuitem "experiment 评测平台" [expanded] [ref=e41] [cursor=pointer]:
+          - img "experiment" [ref=e42]
+          - generic [ref=e45]: 评测平台
+        - menu [ref=e46]:
+          - menuitem "用例管理" [ref=e47] [cursor=pointer]
+          - menuitem "任务管理" [ref=e49] [cursor=pointer]
+    - main [ref=e51]:
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - heading "能力装配" [level=5] [ref=e57]
+          - generic [ref=e59]:
+            - generic [ref=e61]:
+              - strong [ref=e63]: 模型
+              - generic [ref=e64] [cursor=pointer]:
+                - generic [ref=e65]:
+                  - generic: 请选择模型配置
+                  - combobox [ref=e66]
+                - img "down" [ref=e68]
+            - separator [ref=e72]
+            - generic [ref=e74]:
+              - strong [ref=e76]: 工具包
+              - generic [ref=e78]:
+                - img "No data" [ref=e80]
+                - generic [ref=e86]: 暂无工具供应商
+            - separator [ref=e88]
+            - generic [ref=e90]:
+              - strong [ref=e92]: Skills
+              - generic [ref=e94]:
+                - img "No data" [ref=e96]
+                - generic [ref=e102]: 暂无 Skill
+            - separator [ref=e104]
+            - generic [ref=e106]:
+              - strong [ref=e108]: 系统提示词
+              - textbox "请输入系统提示词（可选）" [ref=e109]
+            - generic [ref=e111]:
+              - button "重置配置" [ref=e113] [cursor=pointer]
+              - button "应 用" [ref=e116] [cursor=pointer]
+        - generic [ref=e118]:
+          - generic [ref=e119]:
+            - strong [ref=e121]: 当前会话
+            - button "plus 新建会话" [ref=e122] [cursor=pointer]:
+              - img "plus" [ref=e124]
+              - generic [ref=e128]: 新建会话
+          - generic [ref=e131]:
+            - img "No data" [ref=e133]
+            - generic [ref=e144]: 开始一段新对话吧
+          - generic [ref=e145]:
+            - generic [ref=e146]:
+              - switch [ref=e147] [cursor=pointer]
+              - generic [ref=e150]: 规划模式（PlanMode）
+            - generic [ref=e151]:
+              - textbox "请输入消息（Enter 发送，Shift+Enter 换行）" [ref=e152]
+              - button "send 发送" [disabled] [ref=e153]:
+                - generic:
+                  - img "send"
+                - generic: 发送

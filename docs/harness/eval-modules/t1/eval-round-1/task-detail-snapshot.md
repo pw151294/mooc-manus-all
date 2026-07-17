@@ -1,0 +1,35 @@
+- generic [ref=f1e4]:
+  - banner [ref=f1e5]:
+    - generic [ref=f1e6]: Mooc Manus
+  - generic [ref=f1e7]:
+    - complementary [ref=f1e8]:
+      - menu [ref=f1e10]:
+        - menuitem "message 智能体对话" [ref=f1e11] [cursor=pointer]:
+          - img "message" [ref=f1e12]
+          - generic [ref=f1e15]: 智能体对话
+        - menuitem "setting 模型配置" [ref=f1e16] [cursor=pointer]:
+          - img "setting" [ref=f1e17]
+          - generic [ref=f1e20]: 模型配置
+        - menuitem "tool 工具管理" [expanded] [ref=f1e21] [cursor=pointer]:
+          - img "tool" [ref=f1e22]
+          - generic [ref=f1e25]: 工具管理
+        - menu [ref=f1e26]:
+          - menuitem "工具供应商" [ref=f1e27] [cursor=pointer]
+          - menuitem "工具函数" [ref=f1e29] [cursor=pointer]
+        - menuitem "thunderbolt Skill管理" [ref=f1e31] [cursor=pointer]:
+          - img "thunderbolt" [ref=f1e32]
+          - generic [ref=f1e35]: Skill管理
+        - menuitem "node-index 会话追踪" [ref=f1e36] [cursor=pointer]:
+          - img "node-index" [ref=f1e37]
+          - generic [ref=f1e40]: 会话追踪
+        - menuitem "experiment 评测平台" [expanded] [ref=f1e41] [cursor=pointer]:
+          - img "experiment" [ref=f1e42]
+          - generic [ref=f1e45]: 评测平台
+        - menu [ref=f1e46]:
+          - menuitem "用例管理" [ref=f1e47] [cursor=pointer]
+          - menuitem "任务管理" [ref=f1e49] [cursor=pointer]
+    - main [ref=f1e51]:
+      - generic [ref=f1e53]:
+        - heading "任务详情" [level=2] [ref=f1e54]
+        - paragraph [ref=f1e55]: "任务 ID: test-task-123"
+        - paragraph [ref=f1e56]: 功能实现中...
