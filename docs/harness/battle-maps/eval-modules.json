@@ -1,0 +1,97 @@
+{
+  "projectId": "eval-modules",
+  "projectName": "评测平台前端模块化实施",
+  "version": "1.0.0",
+  "zones": [
+    { "id": "human-ai", "label": "人机协作区", "phases": ["P1"], "driver": "human" },
+    { "id": "agent-harness", "label": "智能体驱动区", "phases": ["P2", "P3", "P4"], "driver": "agent" }
+  ],
+  "tasks": {
+    "t1": {
+      "title": "T1 基础设施（M1）",
+      "owner": "前端",
+      "description": "搭建评测平台前端基础能力：类型定义、API 封装、状态管理、路由与菜单入口，供 M2-M5 复用",
+      "phase": "P1",
+      "zone": "human-ai",
+      "type": "contract",
+      "artifacts": [
+        "mooc-manus-web/src/types/eval.ts",
+        "mooc-manus-web/src/api/modules/eval.ts",
+        "mooc-manus-web/src/store/evalCase.ts",
+        "mooc-manus-web/src/store/evalTask.ts",
+        "mooc-manus-web/src/store/evalInstance.ts",
+        "mooc-manus-web/src/router/index.tsx",
+        "mooc-manus-web/src/components/Layout/index.tsx"
+      ],
+      "position": { "x": 500, "y": 300 }
+    },
+    "t2": {
+      "title": "T2 用例管理（M2）",
+      "owner": "前端",
+      "description": "交付评测用例的 CRUD、脚本上传/编辑、搜索过滤与分页，维护后续任务所需的 Case 数据",
+      "phase": "P2",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": [
+        "mooc-manus-web/src/pages/Eval/Cases/index.tsx",
+        "mooc-manus-web/src/pages/Eval/Cases/CaseTable.tsx",
+        "mooc-manus-web/src/pages/Eval/Cases/CaseFormModal.tsx",
+        "mooc-manus-web/src/pages/Eval/Cases/ScriptInput.tsx",
+        "mooc-manus-web/src/pages/Eval/Cases/CaseDetailDrawer.tsx"
+      ],
+      "position": { "x": 333, "y": 500 }
+    },
+    "t3": {
+      "title": "T3 任务管理（M3）",
+      "owner": "前端",
+      "description": "交付任务列表、状态过滤、M×N 任务创建、删除/重试与 5s 智能轮询",
+      "phase": "P2",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": [
+        "mooc-manus-web/src/pages/Eval/Tasks/index.tsx",
+        "mooc-manus-web/src/pages/Eval/Tasks/TaskTable.tsx",
+        "mooc-manus-web/src/pages/Eval/Tasks/TaskCreateModal.tsx",
+        "mooc-manus-web/src/pages/Eval/Tasks/TaskFilters.tsx"
+      ],
+      "position": { "x": 667, "y": 500 }
+    },
+    "t4": {
+      "title": "T4 任务详情与实例（M4）",
+      "owner": "前端",
+      "description": "交付任务详情页、任务汇总、实例列表、Drawer、实例重试/删除与 3s 智能轮询",
+      "phase": "P3",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": [
+        "mooc-manus-web/src/pages/Eval/TaskDetail/index.tsx",
+        "mooc-manus-web/src/pages/Eval/TaskDetail/TaskSummaryCard.tsx",
+        "mooc-manus-web/src/pages/Eval/TaskDetail/InstanceTable.tsx",
+        "mooc-manus-web/src/pages/Eval/TaskDetail/InstanceDrawer.tsx",
+        "mooc-manus-web/src/pages/Eval/TaskDetail/InstanceFilters.tsx"
+      ],
+      "position": { "x": 500, "y": 700 }
+    },
+    "t5": {
+      "title": "T5 Trace 深链与联动（M5）",
+      "owner": "前端",
+      "description": "交付实例到 Trace 页的跨页面跳转，Trace 页通过 traceId 深链自动开 Modal",
+      "phase": "P4",
+      "zone": "agent-harness",
+      "type": "fe",
+      "artifacts": [
+        "mooc-manus-web/src/pages/Trace/index.tsx",
+        "mooc-manus-web/src/pages/Eval/TaskDetail/InstanceDrawer.tsx"
+      ],
+      "position": { "x": 500, "y": 900 }
+    }
+  },
+  "edges": [
+    { "from": "t1", "to": "t2", "type": "contract" },
+    { "from": "t1", "to": "t3", "type": "contract" },
+    { "from": "t1", "to": "t4", "type": "contract" },
+    { "from": "t1", "to": "t5", "type": "contract" },
+    { "from": "t3", "to": "t4", "type": "normal" },
+    { "from": "t4", "to": "t5", "type": "normal" }
+  ]
+}
